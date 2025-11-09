@@ -17,7 +17,13 @@ git clone https://github.com/yourusername/flutterGristAPI.git
 cd flutterGristAPI
 ```
 
-### Step 2: Set Up Environment Variables
+### Step 2: Navigate to Grist Module
+
+```bash
+cd grist-module
+```
+
+### Step 3: Set Up Environment Variables
 
 ```bash
 # Copy the example environment file
@@ -42,7 +48,7 @@ openssl rand -hex 32
 # Example: K8mN2pQ5rS9vX3zA6bC1dE4fG7hJ0iL
 ```
 
-### Step 3: Start Grist Server
+### Step 4: Start Grist Server
 
 ```bash
 ./docker-test.sh grist-start
@@ -53,7 +59,7 @@ You should see:
 ✓ Grist started at http://localhost:8484
 ```
 
-### Step 4: Configure Grist (First Time)
+### Step 5: Configure Grist (First Time)
 
 1. **Open Grist in your browser:**
    - Navigate to http://localhost:8484
@@ -102,7 +108,7 @@ You should see:
                               This is your Document ID
    ```
 
-### Step 5: Create App Configuration (Optional - for testing with real app)
+### Step 6: Create App Configuration (Optional - for testing with real app)
 
 If you want to test the Flutter widgets with your Grist instance, create a YAML configuration file:
 
@@ -162,7 +168,7 @@ pages:
             type: "Bool"
 ```
 
-### Step 6: Build Flutter Docker Image
+### Step 7: Build Flutter Docker Image
 
 ```bash
 ./docker-test.sh build
@@ -175,7 +181,7 @@ This will:
 
 **This may take 5-10 minutes the first time.**
 
-### Step 7: Run Tests
+### Step 8: Run Tests
 
 ```bash
 ./docker-test.sh all
@@ -192,7 +198,7 @@ You should see:
 - 77 unit tests should pass
 - 0 analysis errors
 
-### Step 8: Verify Setup
+### Step 9: Verify Setup
 
 Check that everything is running:
 

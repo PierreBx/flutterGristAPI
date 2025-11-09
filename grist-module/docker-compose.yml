@@ -20,11 +20,11 @@ services:
 
   flutter-test:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../flutter-module
+      dockerfile: ../grist-module/Dockerfile
     container_name: flutter_grist_widgets_test
     volumes:
-      - .:/app
+      - ../flutter-module:/app
       - flutter-pub-cache:/root/.pub-cache
     environment:
       - FLUTTER_ROOT=/opt/flutter
@@ -34,11 +34,11 @@ services:
 
   flutter-analyze:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../flutter-module
+      dockerfile: ../grist-module/Dockerfile
     container_name: flutter_grist_widgets_analyze
     volumes:
-      - .:/app
+      - ../flutter-module:/app
       - flutter-pub-cache:/root/.pub-cache
     environment:
       - FLUTTER_ROOT=/opt/flutter
@@ -48,11 +48,11 @@ services:
 
   flutter-shell:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../flutter-module
+      dockerfile: ../grist-module/Dockerfile
     container_name: flutter_grist_widgets_shell
     volumes:
-      - .:/app
+      - ../flutter-module:/app
       - flutter-pub-cache:/root/.pub-cache
     environment:
       - FLUTTER_ROOT=/opt/flutter

@@ -53,6 +53,7 @@ coverage/
 *.mocks.dart
 
 # Docker & Grist
-grist-data/*
-!grist-data/README.md
+grist-module/grist-data/*
+!grist-module/grist-data/README.md
+grist-module/.env
 .env

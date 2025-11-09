@@ -16,7 +16,15 @@ This Docker setup provides a complete development and testing environment with:
 
 ## Quick Start
 
-### 1. Set Up Environment (First Time Only)
+**All Docker commands must be run from the `grist-module/` directory.**
+
+### 1. Navigate to Grist Module
+
+```bash
+cd grist-module
+```
+
+### 2. Set Up Environment (First Time Only)
 
 ```bash
 # Copy environment template
@@ -26,7 +34,7 @@ cp .env.example .env
 # GRIST_SESSION_SECRET=your-random-secret-here
 ```
 
-### 2. Start Grist Server
+### 3. Start Grist Server
 
 ```bash
 ./docker-test.sh grist-start
@@ -36,13 +44,13 @@ Grist will be available at **http://localhost:8484**
 
 **Note**: Your Grist data is stored in the `./grist-data` directory and persists between container restarts.
 
-### 3. Build Flutter Docker Image
+### 4. Build Flutter Docker Image
 
 ```bash
 ./docker-test.sh build
 ```
 
-### 4. Run Flutter Tests
+### 5. Run Flutter Tests
 
 ```bash
 ./docker-test.sh all
