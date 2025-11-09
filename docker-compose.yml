@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  flutter-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flutter_grist_widgets_test
+    volumes:
+      - .:/app
+      - flutter-pub-cache:/root/.pub-cache
+    environment:
+      - FLUTTER_ROOT=/opt/flutter
+    command: flutter test --reporter expanded
+
+  flutter-analyze:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flutter_grist_widgets_analyze
+    volumes:
+      - .:/app
+      - flutter-pub-cache:/root/.pub-cache
+    environment:
+      - FLUTTER_ROOT=/opt/flutter
+    command: flutter analyze
+
+  flutter-shell:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flutter_grist_widgets_shell
+    volumes:
+      - .:/app
+      - flutter-pub-cache:/root/.pub-cache
+    environment:
+      - FLUTTER_ROOT=/opt/flutter
+    command: /bin/bash
+    stdin_open: true
+    tty: true
+
+volumes:
+  flutter-pub-cache:
