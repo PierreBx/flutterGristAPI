@@ -162,6 +162,8 @@ class _DataMasterPageState extends State<DataMasterPage> {
               isLoading: _isLoading,
               error: _error,
               showIdColumn: gristConfig?['show_id'] as bool? ?? false,
+              rowsPerPage: gristConfig?['rows_per_page'] as int?,
+              enableSorting: gristConfig?['enable_sorting'] as bool? ?? true,
               onRowTap: (record) {
                 final onClick =
                     gristConfig?['on_row_click'] as Map<String, dynamic>?;

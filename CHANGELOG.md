@@ -1,3 +1,117 @@
+## 0.3.0
+
+### Major Feature Release - File Uploads, Pagination & Enhanced Tables
+
+#### File Upload with Drag & Drop
+* **NEW FileUploadWidget** with drag & drop support
+  * Visual drag & drop zone with hover effects
+  * Click to browse file picker integration
+  * Image preview for uploaded files
+  * File size validation and limits
+  * File type restrictions (allowed extensions)
+  * File info display (name, size, type)
+  * Base64 encoding for storage
+  * Data URL generation for images
+  * Comprehensive file icon set based on MIME type
+* File field type support in forms
+* Integration with file_picker and image_picker packages
+
+#### Create New Record Page
+* **NEW DataCreatePage** for adding records
+  * Form-based record creation
+  * Support for all field types (text, numeric, date, file)
+  * Date picker integration
+  * File upload support
+  * Field validation enforcement
+  * Cancel/Create actions
+  * Success/error feedback
+  * Auto-navigation after creation
+
+#### Column Sorting
+* Click column headers to sort ascending/descending
+* Sort indicator (arrow) on active column
+* Multi-type sort support:
+  * Numeric sorting for numbers
+  * Date sorting for dates
+  * Alphabetical for text
+* Configurable sortable columns
+* Null value handling in sorts
+* Sort state persistence during filtering
+
+#### Pagination
+* Configurable rows per page
+* Page navigation controls (First, Previous, Next, Last)
+* Page indicator (Page X of Y)
+* Automatic page reset on sorting
+* Works seamlessly with search/filter
+* YAML-configurable via `rows_per_page`
+
+#### Enhanced Date Handling
+* Date picker widget for date fields
+* Improved date formatting with intl package
+  * yyyy-MM-dd format for dates
+  * yyyy-MM-dd HH:mm for datetime
+* Parse and display date values correctly
+* Date field type in create/edit forms
+
+#### Image Preview in Tables
+* Automatic image detection in table cells
+* Thumbnail preview for image files
+* Support for data URLs (base64 images)
+* Support for image URLs (.jpg, .png, .gif)
+* Fallback to filename if image fails to load
+* 40px height constraint for table rows
+
+#### Enhanced Value Formatting
+* File/image fields show "📎 Attached" for data URLs
+* Filename extraction from URLs
+* Better date/datetime formatting
+* Currency formatting maintained
+* Boolean checkmark symbols
+
+#### New Dependencies
+* `file_picker: ^6.1.1` - Cross-platform file picking
+* `image_picker: ^1.0.7` - Image selection
+* `mime: ^1.0.5` - MIME type detection
+* `intl: ^0.19.0` - Internationalization and date formatting
+
+#### Breaking Changes
+* GristTableWidget converted from StatelessWidget to StatefulWidget
+* TableColumnConfig added `sortable` property (defaults to true)
+* Data table now requires more vertical space for pagination controls
+* File fields store as data URLs or file URLs (not file paths)
+
+#### Developer Experience
+* FileUploadWidget and FileUploadResult exported
+* DataCreatePage exported for custom implementations
+* Better type detection for keyboard types
+* Comprehensive error handling in file operations
+* Memory-efficient image handling
+
+#### Bug Fixes
+* Proper image memory widget usage
+* Safe type casting in column sorting
+* Null-safe date parsing
+* Proper scroll behavior with pagination
+
+#### YAML Configuration Additions
+```yaml
+grist:
+  rows_per_page: 20  # Enable pagination
+  enable_sorting: true  # Enable column sorting
+
+  form:
+    fields:
+      - name: "profile_picture"
+        type: "file"
+        allowed_extensions: ["jpg", "png", "gif"]
+        max_file_size: 5242880  # 5MB
+      - name: "birth_date"
+        type: "date"
+```
+
+---
+
 ## 0.2.0
 
 ### Major Feature Release - Full CRUD Operations
