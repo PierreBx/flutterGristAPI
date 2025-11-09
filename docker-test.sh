@@ -12,9 +12,11 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}Flutter Docker Test Runner${NC}"
 echo "================================"
 
-# Check if docker-compose is available
-if ! command -v docker-compose &> /dev/null; then
-    echo -e "${RED}Error: docker-compose not found${NC}"
+# Check if docker compose is available (modern Docker CLI plugin)
+if ! docker compose version &> /dev/null; then
+    echo -e "${RED}Error: docker compose not found${NC}"
+    echo "Please install Docker Desktop or Docker CLI with Compose plugin"
+    echo "See: https://docs.docker.com/compose/install/"
     exit 1
 fi
 
@@ -27,7 +29,7 @@ run_command() {
     echo -e "${BLUE}Running: ${description}${NC}"
     echo "--------------------------------"
 
-    docker-compose run --rm ${service}
+    docker compose run --rm ${service}
     local exit_code=$?
 
     if [ $exit_code -eq 0 ]; then
@@ -49,7 +51,7 @@ case "$1" in
         ;;
     shell)
         echo -e "${BLUE}Opening interactive shell...${NC}"
-        docker-compose run --rm flutter /bin/bash
+        docker compose run --rm flutter /bin/bash
         ;;
     all)
         echo -e "${BLUE}Running full test suite...${NC}"
@@ -72,43 +74,43 @@ case "$1" in
         ;;
     grist-start)
         echo -e "${BLUE}Starting Grist server...${NC}"
-        docker-compose up -d grist
+        docker compose up -d grist
         echo -e "${GREEN}✓ Grist started at http://localhost:8484${NC}"
         ;;
     grist-stop)
         echo -e "${BLUE}Stopping Grist server...${NC}"
-        docker-compose stop grist
+        docker compose stop grist
         echo -e "${GREEN}✓ Grist stopped${NC}"
         ;;
     grist-logs)
         echo -e "${BLUE}Showing Grist logs...${NC}"
-        docker-compose logs -f grist
+        docker compose logs -f grist
         ;;
     grist-restart)
         echo -e "${BLUE}Restarting Grist server...${NC}"
-        docker-compose restart grist
+        docker compose restart grist
         echo -e "${GREEN}✓ Grist restarted${NC}"
         ;;
     start-all)
         echo -e "${BLUE}Starting all services...${NC}"
-        docker-compose up -d
+        docker compose up -d
         echo -e "${GREEN}✓ All services started${NC}"
         echo -e "${GREEN}✓ Grist available at http://localhost:8484${NC}"
         ;;
     stop-all)
         echo -e "${BLUE}Stopping all services...${NC}"
-        docker-compose stop
+        docker compose stop
         echo -e "${GREEN}✓ All services stopped${NC}"
         ;;
     clean)
         echo -e "${BLUE}Cleaning Docker resources...${NC}"
-        docker-compose down -v
+        docker compose down -v
         docker system prune -f
         echo -e "${GREEN}✓ Cleanup complete${NC}"
         ;;
     build)
         echo -e "${BLUE}Building Docker image...${NC}"
-        docker-compose build
+        docker compose build
         echo -e "${GREEN}✓ Build complete${NC}"
         ;;
     *)

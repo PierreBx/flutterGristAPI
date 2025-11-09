@@ -12,7 +12,8 @@ This Docker setup provides a complete development and testing environment with:
 ## Prerequisites
 
 - Docker installed ([Get Docker](https://docs.docker.com/get-docker/))
-- Docker Compose installed (usually comes with Docker Desktop)
+  - Docker Compose V2 is built into Docker Desktop and modern Docker CLI
+  - This project uses `docker compose` commands (not the legacy `docker-compose`)
 
 ## Quick Start
 

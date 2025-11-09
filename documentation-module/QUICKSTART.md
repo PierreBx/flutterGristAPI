@@ -5,7 +5,8 @@ This guide will help you set up the complete Flutter Grist Widgets development e
 ## Prerequisites
 
 - ✅ Docker installed and running ([Get Docker](https://docs.docker.com/get-docker/))
-- ✅ Docker Compose installed (included with Docker Desktop)
+  - Docker Compose V2 is built into Docker Desktop and modern Docker installations
+  - We use `docker compose` (not the old `docker-compose`)
 - ✅ Git installed (for cloning the repository)
 
 ## Step-by-Step Setup
