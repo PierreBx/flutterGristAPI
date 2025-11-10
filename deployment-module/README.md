@@ -12,23 +12,57 @@ The deployment module uses Ansible to automate server configuration, ensuring yo
 - **Monitoring tools** (system health checks, log rotation)
 - **Application environment** (user, directories, nginx reverse proxy)
 
-## Prerequisites
+## Two Ways to Run Ansible
 
-### Local Machine Requirements
-- Ansible 2.9 or higher installed
+### Option 1: Docker-based (Recommended) ✨
+
+**Pros:**
+- ✅ No Ansible installation required on your laptop
+- ✅ Consistent environment for all developers
+- ✅ Isolated dependencies
+- ✅ Works on any OS with Docker
+
+**Requirements:**
+- Docker installed and running
 - SSH access to the Raspberry Pi
-- SSH key-based authentication configured
+- SSH key-based authentication configured (~/.ssh/)
 
-### Raspberry Pi Requirements
-- Raspberry Pi 3/4/5 with Raspberry Pi OS (Debian-based)
-- SSH enabled and accessible
-- User with sudo privileges
-- Network connectivity
+**Quick Start:**
+```bash
+cd deployment-module
 
-## Quick Start
+# Configure your inventory (one-time setup)
+cp inventory/hosts.example inventory/hosts.yml
+vim inventory/hosts.yml  # Update with your Raspberry Pi IP
 
-### 1. Install Ansible (if not already installed)
+# Build the Docker image (one-time setup)
+./docker-ansible.sh build
 
+# Test connection
+./docker-ansible.sh ping
+
+# Run the full configuration
+./docker-ansible.sh playbooks/configure_server.yml
+
+# Dry run to see what would change
+./docker-ansible.sh playbooks/configure_server.yml --check
+
+# Run specific roles only
+./docker-ansible.sh playbooks/configure_server.yml --tags "docker,app"
+```
+
+### Option 2: Local Ansible Installation
+
+**Pros:**
+- Direct control over Ansible version
+- Slightly faster execution (no container overhead)
+
+**Requirements:**
+- Ansible 2.9 or higher installed on your machine
+- Python 3.x
+- SSH access to the Raspberry Pi
+
+**Install Ansible:**
 ```bash
 # On Ubuntu/Debian
 sudo apt install ansible
@@ -40,75 +74,94 @@ brew install ansible
 pip install ansible
 ```
 
-### 2. Configure Your Inventory
-
-Edit the inventory file to match your Raspberry Pi configuration:
-
+**Quick Start:**
 ```bash
 cd deployment-module
+
+# Configure your inventory
 cp inventory/hosts.example inventory/hosts.yml
 vim inventory/hosts.yml
-```
 
-Update the following values:
-- `ansible_host`: Your Raspberry Pi's IP address
-- `ansible_user`: Your SSH username (usually `pi`)
-
-**Or** set environment variables:
-
-```bash
-export RASPI_HOST=192.168.1.100
-export RASPI_USER=pi
-```
-
-### 3. Test Connection
-
-```bash
+# Test connection
 ansible all -m ping
+
+# Run the configuration
+ansible-playbook playbooks/configure_server.yml
 ```
 
-Expected output:
-```
-raspberry_pi | SUCCESS => {
-    "changed": false,
-    "ping": "pong"
-}
-```
+## Prerequisites
 
-### 4. Run the Configuration Playbook
+### Raspberry Pi Requirements
+- Raspberry Pi 3/4/5 with Raspberry Pi OS (Debian-based)
+- SSH enabled and accessible
+- User with sudo privileges
+- Network connectivity
+
+## Helper Script Commands
+
+The `docker-ansible.sh` script provides convenient commands:
 
 ```bash
-# Full configuration
+# Build the Docker image
+./docker-ansible.sh build
+
+# Test server connectivity
+./docker-ansible.sh ping
+
+# Run a playbook
+./docker-ansible.sh playbooks/configure_server.yml [OPTIONS]
+
+# Start an interactive shell
+./docker-ansible.sh shell
+
+# Show help
+./docker-ansible.sh help
+```
+
+## Common Usage Examples
+
+```bash
+# Full configuration (Docker)
+./docker-ansible.sh playbooks/configure_server.yml
+
+# Dry run to see what would change (Docker)
+./docker-ansible.sh playbooks/configure_server.yml --check --diff
+
+# Verbose output (Docker)
+./docker-ansible.sh playbooks/configure_server.yml -vv
+
+# Run specific roles only (Docker)
+./docker-ansible.sh playbooks/configure_server.yml --tags "common,security"
+
+# Using local Ansible installation
 ansible-playbook playbooks/configure_server.yml
-
-# Dry run (check mode)
 ansible-playbook playbooks/configure_server.yml --check
-
-# Verbose output
-ansible-playbook playbooks/configure_server.yml -vv
-
-# Run specific roles only
-ansible-playbook playbooks/configure_server.yml --tags "common,security"
+ansible-playbook playbooks/configure_server.yml --tags "docker,app"
 ```
 
 ## Directory Structure
 
 ```
 deployment-module/
-├── ansible.cfg              # Ansible configuration
+├── Dockerfile                   # Docker image for Ansible
+├── docker-ansible.sh           # Helper script to run Ansible in Docker
+├── .dockerignore              # Docker build exclusions
+├── ansible.cfg                # Ansible configuration
+├── requirements.txt           # Python/Ansible dependencies
 ├── inventory/
-│   ├── hosts.yml           # Server inventory (customize this)
-│   └── hosts.example       # Example inventory file
+│   ├── hosts.yml             # Server inventory (customize this)
+│   └── hosts.example         # Example inventory file
 ├── playbooks/
-│   └── configure_server.yml # Main configuration playbook
+│   └── configure_server.yml  # Main configuration playbook
 ├── roles/
-│   ├── common/             # Base system configuration
-│   ├── security/           # Security hardening
-│   ├── docker/             # Docker installation
-│   ├── monitoring/         # Monitoring tools
-│   └── app_environment/    # Application setup
-├── group_vars/             # Group variables
-└── README.md              # This file
+│   ├── common/               # Base system configuration
+│   ├── security/             # Security hardening
+│   ├── docker/               # Docker installation
+│   ├── monitoring/           # Monitoring tools
+│   └── app_environment/      # Application setup
+├── scripts/                  # Deployment helper scripts
+├── reports/                  # Generated configuration reports
+└── README.md                # This file
 ```
 
 ## Roles
@@ -179,30 +232,39 @@ app_home: "/opt/flutter_grist_app"
 deployment_env: "production"
 ```
 
-## Usage Examples
+## Advanced Usage Examples
 
-### Run specific tasks
+### Run specific tasks with tags
 
 ```bash
-# Only update packages
+# Docker version
+./docker-ansible.sh playbooks/configure_server.yml --tags "packages"
+./docker-ansible.sh playbooks/configure_server.yml --tags "security"
+./docker-ansible.sh playbooks/configure_server.yml --tags "docker,app"
+
+# Local Ansible version
 ansible-playbook playbooks/configure_server.yml --tags "packages"
-
-# Only configure security
 ansible-playbook playbooks/configure_server.yml --tags "security"
-
-# Configure Docker and app environment
 ansible-playbook playbooks/configure_server.yml --tags "docker,app"
 ```
 
-### Check what would change
+### Check what would change (dry-run)
 
 ```bash
+# Docker version
+./docker-ansible.sh playbooks/configure_server.yml --check --diff
+
+# Local Ansible version
 ansible-playbook playbooks/configure_server.yml --check --diff
 ```
 
 ### Run with elevated verbosity
 
 ```bash
+# Docker version
+./docker-ansible.sh playbooks/configure_server.yml -vvv
+
+# Local Ansible version
 ansible-playbook playbooks/configure_server.yml -vvv
 ```
 
@@ -242,14 +304,34 @@ After running the playbook:
 
 ## Troubleshooting
 
+### Docker Build Issues
+
+```bash
+# Rebuild the image from scratch
+./docker-ansible.sh build
+
+# Check if Docker is running
+docker ps
+
+# Check Docker logs
+docker logs <container-id>
+```
+
 ### Connection Issues
 
 ```bash
 # Test SSH connection
 ssh pi@your-raspberry-pi-ip
 
-# Test Ansible connection
+# Test Ansible connection (Docker)
+./docker-ansible.sh ping
+
+# Test Ansible connection (Local)
 ansible all -m ping -vvv
+
+# Check SSH keys are mounted correctly (Docker)
+./docker-ansible.sh shell
+ls -la /root/.ssh/
 ```
 
 ### Permission Issues
