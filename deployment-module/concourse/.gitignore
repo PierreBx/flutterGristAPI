@@ -1,0 +1,39 @@
+# Environment variables (contains secrets)
+.env
+
+# SSH Keys (generated locally)
+keys/web/
+keys/worker/
+*.key
+*.pub
+*_key
+*_key.pub
+
+# Credentials file (contains sensitive data)
+credentials.yml
+
+# Concourse state files
+.concourse/
+
+# Fly CLI configuration
+.flyrc
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/

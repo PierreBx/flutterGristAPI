@@ -1,0 +1,86 @@
+# =============================================================================
+# Flutter Test Task
+# =============================================================================
+# Runs all unit tests in the Flutter module (77 tests)
+#
+# Usage in pipeline:
+#   - task: flutter-test
+#     file: concourse/tasks/flutter-test.yml
+#
+# =============================================================================
+
+platform: linux
+
+image_resource:
+  type: registry-image
+  source:
+    repository: instrumentisto/flutter
+    tag: latest
+
+inputs:
+  - name: source-code
+
+outputs:
+  - name: test-results
+    optional: true
+
+caches:
+  - path: source-code/flutter-module/.dart_tool
+  - path: /root/.pub-cache
+
+run:
+  path: /bin/sh
+  args:
+    - -ec
+    - |
+      echo "=========================================="
+      echo "🧪 Flutter Unit Tests"
+      echo "=========================================="
+      echo "Running 77 unit tests..."
+      echo ""
+
+      cd source-code/flutter-module
+
+      # Show Flutter version
+      echo "Flutter version:"
+      flutter --version
+      echo ""
+
+      # Get dependencies
+      echo "Getting dependencies..."
+      flutter pub get
+      echo ""
+
+      # Run tests with expanded output
+      echo "Running tests..."
+      echo "=========================================="
+      flutter test --reporter expanded --no-pub --coverage
+
+      EXIT_CODE=$?
+
+      echo ""
+      echo "=========================================="
+
+      # Save test results
+      if [ -f coverage/lcov.info ]; then
+        cp coverage/lcov.info ../test-results/ || true
+        echo "Test coverage data saved"
+      fi
+
+      if [ $EXIT_CODE -eq 0 ]; then
+        echo "✅ All tests passed!"
+        echo "=========================================="
+
+        # Count tests
+        TEST_COUNT=$(find test -name "*_test.dart" | wc -l)
+        echo "Test files executed: $TEST_COUNT"
+
+        if [ -f coverage/lcov.info ]; then
+          echo "Coverage report generated: coverage/lcov.info"
+        fi
+      else
+        echo "❌ Some tests failed"
+        echo "=========================================="
+        echo "Please fix the failing tests before merging"
+        exit $EXIT_CODE
+      fi
