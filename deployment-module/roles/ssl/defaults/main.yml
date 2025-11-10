@@ -1,0 +1,46 @@
+---
+# =============================================================================
+# SSL Role - Default Variables
+# =============================================================================
+# These variables MUST be overridden in your playbook or inventory
+# =============================================================================
+
+# Required variables (MUST be set by user)
+# domain_name: your-domain.com
+# admin_email: admin@your-domain.com
+
+# Application name (used for Nginx config file)
+app_name: flutter_grist_app
+
+# SSL/TLS Security Settings
+ssl_protocols: "TLSv1.2 TLSv1.3"
+ssl_prefer_server_ciphers: "off"  # TLS 1.3 prefers client ciphers
+ssl_ciphers: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384"
+
+# HSTS (HTTP Strict Transport Security) settings
+ssl_hsts_enabled: true
+ssl_hsts_max_age: 31536000  # 1 year in seconds
+ssl_hsts_include_subdomains: true
+ssl_hsts_preload: false  # Set to true only if you've submitted to HSTS preload list
+
+# OCSP Stapling
+ssl_ocsp_stapling: true
+
+# Generate DH parameters (improves security but takes time)
+ssl_generate_dhparam: true
+
+# SSL session cache
+ssl_session_cache: "shared:SSL:10m"
+ssl_session_timeout: "10m"
+
+# Certificate expiry warning threshold (days)
+ssl_expiry_warning_days: 30
+
+# Certbot staging mode (for testing)
+certbot_staging: false
+
+# Upstream application port
+app_upstream_port: 8080
+
+# Application root directory
+app_root_dir: /opt/flutter_grist_app/current

@@ -1,0 +1,158 @@
+---
+# =============================================================================
+# Backup Role - Automated Backup and Recovery
+# =============================================================================
+# This role sets up automated backups for:
+# - Grist database data
+# - Application configuration
+# - Nginx configuration
+# - SSL certificates (if present)
+#
+# Features:
+# - Daily automated backups via cron
+# - Configurable retention policy
+# - Multiple backup destinations (local, remote, cloud)
+# - Backup verification
+# - Easy restore procedures
+# =============================================================================
+
+- name: Ensure backup directory exists
+  file:
+    path: "{{ backup_base_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: '0750'
+
+- name: Create backup subdirectories
+  file:
+    path: "{{ backup_base_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: '0750'
+  loop:
+    - daily
+    - weekly
+    - monthly
+    - temp
+
+- name: Create backup scripts directory
+  file:
+    path: /opt/scripts
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy backup script
+  template:
+    src: backup.sh.j2
+    dest: /opt/scripts/backup.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy restore script
+  template:
+    src: restore.sh.j2
+    dest: /opt/scripts/restore.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install required backup tools
+  apt:
+    name:
+      - rsync       # For efficient file synchronization
+      - tar         # For creating archives
+      - gzip        # For compression
+      - bzip2       # Alternative compression
+      - pigz        # Parallel gzip (faster)
+    state: present
+    update_cache: yes
+
+- name: Create backup configuration file
+  template:
+    src: backup.conf.j2
+    dest: /etc/backup.conf
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Setup daily backup cron job
+  cron:
+    name: "Daily Flutter Grist API backup"
+    minute: "{{ backup_cron_minute }}"
+    hour: "{{ backup_cron_hour }}"
+    job: "/opt/scripts/backup.sh daily >> {{ backup_log_file }} 2>&1"
+    user: root
+    state: present
+
+- name: Setup weekly backup cron job
+  cron:
+    name: "Weekly Flutter Grist API backup"
+    minute: "{{ backup_cron_minute }}"
+    hour: "{{ backup_cron_hour }}"
+    weekday: "0"  # Sunday
+    job: "/opt/scripts/backup.sh weekly >> {{ backup_log_file }} 2>&1"
+    user: root
+    state: present
+
+- name: Setup monthly backup cron job
+  cron:
+    name: "Monthly Flutter Grist API backup"
+    minute: "{{ backup_cron_minute }}"
+    hour: "{{ backup_cron_hour }}"
+    day: "1"  # First day of month
+    job: "/opt/scripts/backup.sh monthly >> {{ backup_log_file }} 2>&1"
+    user: root
+    state: present
+
+- name: Setup backup cleanup cron job
+  cron:
+    name: "Cleanup old backups"
+    minute: "30"
+    hour: "{{ backup_cron_hour | int + 1 }}"
+    job: "/opt/scripts/backup.sh cleanup >> {{ backup_log_file }} 2>&1"
+    user: root
+    state: present
+
+- name: Create backup log file
+  file:
+    path: "{{ backup_log_file }}"
+    state: touch
+    owner: root
+    group: root
+    mode: '0644'
+    modification_time: preserve
+    access_time: preserve
+
+- name: Setup log rotation for backup logs
+  template:
+    src: backup-logrotate.j2
+    dest: /etc/logrotate.d/backup
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Verify backup script is executable
+  file:
+    path: /opt/scripts/backup.sh
+    mode: '0755'
+
+- name: Display backup information
+  debug:
+    msg:
+      - "================================================"
+      - "Backup Configuration Complete"
+      - "================================================"
+      - "Backup directory: {{ backup_base_dir }}"
+      - "Backup schedule: Daily at {{ backup_cron_hour }}:{{ backup_cron_minute }}"
+      - "Retention: Daily={{ backup_retention_daily }}d, Weekly={{ backup_retention_weekly }}w, Monthly={{ backup_retention_monthly }}m"
+      - "Log file: {{ backup_log_file }}"
+      - ""
+      - "Manual backup: sudo /opt/scripts/backup.sh daily"
+      - "Restore backup: sudo /opt/scripts/restore.sh <backup_file>"
+      - "View logs: sudo tail -f {{ backup_log_file }}"
+      - "================================================"

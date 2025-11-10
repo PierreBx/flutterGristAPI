@@ -1,0 +1,20 @@
+# Gitleaks Ignore File
+# Add patterns here to ignore false positives in secrets scanning
+
+# Example configuration files (not real secrets)
+**/.env.example
+**/credentials.yml.example
+**/hosts.example
+
+# Documentation files
+**/DEVOPS_ENHANCEMENTS_ANALYSIS.md
+**/README*.md
+**/QUICKSTART.md
+**/DAILY_USAGE.md
+
+# Test files with dummy credentials
+**/test/**
+**/*_test.dart
+
+# Example app configuration (not production)
+flutter-module/example/app_config.yaml

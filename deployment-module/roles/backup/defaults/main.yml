@@ -1,0 +1,41 @@
+---
+# =============================================================================
+# Backup Role - Default Variables
+# =============================================================================
+# These variables can be overridden in your playbook or inventory
+# =============================================================================
+
+# Base directory for backups
+backup_base_dir: /opt/backups
+
+# Application user
+app_user: flutterapp
+
+# Backup schedule (cron format)
+backup_cron_hour: "2"
+backup_cron_minute: "0"
+
+# Retention periods (in days)
+backup_retention_daily: 7      # Keep daily backups for 7 days
+backup_retention_weekly: 28    # Keep weekly backups for 4 weeks (28 days)
+backup_retention_monthly: 90   # Keep monthly backups for 3 months (90 days)
+
+# Log file location
+backup_log_file: /var/log/backup.log
+
+# Data directories to backup
+grist_data_dir: /opt/grist/data
+app_config_dir: /opt/flutter_grist_app/config
+
+# Remote backup configuration (optional)
+# Uncomment and configure for remote backups
+# remote_backup_enabled: false
+# remote_backup_user: backup
+# remote_backup_host: backup.example.com
+# remote_backup_path: /backups/flutter-grist-api
+
+# Cloud backup configuration (optional)
+# Uncomment and configure for cloud backups (requires rclone)
+# cloud_backup_enabled: false
+# cloud_backup_remote: s3-backup
+# cloud_backup_bucket: my-backups

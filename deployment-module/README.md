@@ -10,7 +10,12 @@ The deployment module uses Ansible to automate server configuration, ensuring yo
 - **Security hardening** (SSH, firewall, fail2ban, automatic updates)
 - **Docker environment** (Docker CE, Docker Compose)
 - **Monitoring tools** (system health checks, log rotation)
+- **Automated backups** ✨ NEW - Daily/weekly/monthly with retention policies
+- **SSL/TLS automation** ✨ NEW - Let's Encrypt with auto-renewal
 - **Application environment** (user, directories, nginx reverse proxy)
+
+> 🎉 **New in Phase 1:** Enhanced with test coverage, automated backups, SSL/TLS, and secrets scanning!
+> See [DEVOPS_ENHANCEMENTS.md](DEVOPS_ENHANCEMENTS.md) for details.
 
 ## Two Ways to Run Ansible
 
@@ -202,6 +207,51 @@ Sets up monitoring tools:
 - Creates health check scripts
 - Configures log rotation
 
+### Backup Role ✨ NEW
+**Tags:** `backup`
+
+Automated backup and recovery:
+- Daily, weekly, and monthly backup schedules
+- Configurable retention policies (7/28/90 days)
+- Backup verification with SHA256 checksums
+- Easy restore with verification
+- Supports local, remote, and cloud destinations
+
+**What's backed up:**
+- Grist database data
+- Application configuration
+- Nginx configuration
+- SSL certificates
+
+**Commands:**
+```bash
+sudo /opt/scripts/backup.sh daily      # Manual backup
+sudo /opt/scripts/restore.sh --latest  # Restore latest
+sudo /opt/scripts/backup.sh stats      # View statistics
+```
+
+### SSL Role ✨ NEW
+**Tags:** `ssl`
+
+SSL/TLS automation with Let's Encrypt:
+- Automated certificate issuance
+- Auto-renewal every 7 days
+- Strong security (TLS 1.2/1.3, HSTS, OCSP)
+- Certificate expiry monitoring
+- HTTP → HTTPS redirect
+
+**Requirements:**
+- `domain_name` variable set
+- `admin_email` variable set
+- DNS pointing to server
+- Ports 80 and 443 open
+
+**Commands:**
+```bash
+sudo certbot renew                                # Manual renewal
+sudo /opt/scripts/check-cert-expiry.sh DOMAIN     # Check expiry
+```
+
 ### App Environment Role
 **Tags:** `app`, `environment`
 
@@ -369,14 +419,14 @@ cat ansible.log
 
 ## Next Steps
 
-1. Configure SSL/TLS certificates with Let's Encrypt:
-   ```bash
-   sudo certbot --nginx -d your-domain.com
-   ```
+1. ✅ ~~Configure SSL/TLS~~ - Now automated with the `ssl` role!
+2. ✅ ~~Configure backup scripts~~ - Now automated with the `backup` role!
+3. Set up application deployment automation
+4. Set up monitoring alerts (Phase 2)
+5. Configure centralized logging (Phase 2)
+6. Set up metrics and dashboards (Phase 2)
 
-2. Set up application deployment automation
-3. Configure backup scripts
-4. Set up monitoring alerts
+See [DEVOPS_ENHANCEMENTS_ANALYSIS.md](../DEVOPS_ENHANCEMENTS_ANALYSIS.md) for the complete roadmap.
 
 ## Contributing
 

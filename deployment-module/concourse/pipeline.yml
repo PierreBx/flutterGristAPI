@@ -125,6 +125,146 @@ jobs:
                   exit $EXIT_CODE
                 fi
 
+      # Task 3: Test Coverage Report
+      - task: test-coverage
+        image: flutter-image
+        config:
+          platform: linux
+          inputs:
+            - name: source-code
+          outputs:
+            - name: coverage-report
+          caches:
+            - path: source-code/flutter-module/.dart_tool
+            - path: /root/.pub-cache
+          run:
+            path: /bin/sh
+            args:
+              - -ec
+              - |
+                echo "=========================================="
+                echo "📊 Generating Test Coverage Report..."
+                echo "=========================================="
+                cd source-code/flutter-module
+
+                # Install lcov for coverage reporting
+                apk add --no-cache lcov perl
+
+                # Get dependencies (if not cached)
+                flutter pub get
+
+                # Run tests with coverage
+                flutter test --coverage --no-pub
+
+                # Generate HTML report
+                echo ""
+                echo "Generating HTML coverage report..."
+                genhtml coverage/lcov.info -o coverage/html --quiet
+
+                # Display coverage summary
+                echo ""
+                echo "=========================================="
+                echo "📈 Coverage Summary:"
+                echo "=========================================="
+                lcov --summary coverage/lcov.info
+
+                # Extract coverage percentage
+                COVERAGE=$(lcov --summary coverage/lcov.info 2>&1 | grep "lines" | grep -oP '\d+\.\d+(?=%)')
+                echo ""
+                echo "Total Line Coverage: ${COVERAGE}%"
+
+                # Set minimum coverage threshold
+                MIN_COVERAGE=60.0
+
+                # Compare coverage (using awk for float comparison)
+                if awk "BEGIN {exit !($COVERAGE >= $MIN_COVERAGE)}"; then
+                  echo "✅ Coverage meets minimum threshold (${MIN_COVERAGE}%)"
+                else
+                  echo "⚠️  Warning: Coverage ${COVERAGE}% is below threshold ${MIN_COVERAGE}%"
+                  echo "This is a warning only - pipeline will continue"
+                  echo "Consider adding more tests to improve coverage"
+                fi
+
+                # Copy coverage report to output
+                cp -r coverage ../coverage-report/
+
+                echo ""
+                echo "Coverage report generated at: coverage/html/index.html"
+                echo "✅ Coverage analysis complete!"
+
+      # Task 4: Secrets Scanning
+      - task: secrets-scan
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: alpine
+              tag: latest
+          inputs:
+            - name: source-code
+          run:
+            path: /bin/sh
+            args:
+              - -ec
+              - |
+                echo "=========================================="
+                echo "🔐 Scanning for Secrets and Credentials..."
+                echo "=========================================="
+
+                # Install required tools
+                apk add --no-cache wget tar gzip git
+
+                # Download gitleaks
+                echo "Downloading gitleaks..."
+                wget -q https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz
+                tar -xzf gitleaks_8.18.4_linux_x64.tar.gz
+                chmod +x gitleaks
+
+                cd source-code
+
+                # Initialize git if needed (for gitleaks to work)
+                if [ ! -d .git ]; then
+                  git init
+                  git add .
+                  git config user.email "ci@concourse.local"
+                  git config user.name "Concourse CI"
+                  git commit -m "Temporary commit for scanning"
+                fi
+
+                echo ""
+                echo "Running secrets detection..."
+
+                # Run gitleaks
+                if ../gitleaks detect --source . --verbose --no-git --report-format json --report-path gitleaks-report.json; then
+                  echo ""
+                  echo "✅ No secrets detected in codebase"
+                else
+                  EXIT_CODE=$?
+                  echo ""
+                  echo "=========================================="
+                  echo "⚠️  POTENTIAL SECRETS DETECTED!"
+                  echo "=========================================="
+
+                  # Show findings
+                  if [ -f gitleaks-report.json ]; then
+                    cat gitleaks-report.json
+                  fi
+
+                  echo ""
+                  echo "Please review the findings above and remove any sensitive data."
+                  echo "Common issues:"
+                  echo "  - API keys in code"
+                  echo "  - Passwords or tokens"
+                  echo "  - Private keys"
+                  echo "  - Database connection strings with credentials"
+                  echo ""
+                  echo "If these are false positives, add them to .gitleaksignore"
+                  echo "=========================================="
+
+                  exit $EXIT_CODE
+                fi
+
     on_success:
       task: notify-success
       config:
