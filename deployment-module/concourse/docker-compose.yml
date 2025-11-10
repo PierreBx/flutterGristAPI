@@ -1,0 +1,143 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for Concourse metadata
+  concourse-db:
+    image: postgres:15-alpine
+    container_name: concourse-db
+    environment:
+      POSTGRES_DB: concourse
+      POSTGRES_USER: concourse_user
+      POSTGRES_PASSWORD: ${CONCOURSE_POSTGRES_PASSWORD:-concourse_pass}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - concourse-db-data:/var/lib/postgresql/data
+    networks:
+      - concourse-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U concourse_user -d concourse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Concourse Web (UI + API + Scheduler)
+  concourse-web:
+    image: concourse/concourse:7.11
+    container_name: concourse-web
+    command: web
+    depends_on:
+      concourse-db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"  # Web UI
+    volumes:
+      - ./keys/web:/concourse-keys
+    environment:
+      # Database connection
+      CONCOURSE_POSTGRES_HOST: concourse-db
+      CONCOURSE_POSTGRES_PORT: 5432
+      CONCOURSE_POSTGRES_DATABASE: concourse
+      CONCOURSE_POSTGRES_USER: concourse_user
+      CONCOURSE_POSTGRES_PASSWORD: ${CONCOURSE_POSTGRES_PASSWORD:-concourse_pass}
+
+      # External URL
+      CONCOURSE_EXTERNAL_URL: http://localhost:8080
+
+      # Authentication (simple local user for development)
+      CONCOURSE_ADD_LOCAL_USER: ${CONCOURSE_USERNAME:-admin}:${CONCOURSE_PASSWORD:-admin}
+      CONCOURSE_MAIN_TEAM_LOCAL_USER: ${CONCOURSE_USERNAME:-admin}
+
+      # Session signing key
+      CONCOURSE_SESSION_SIGNING_KEY: /concourse-keys/session_signing_key
+
+      # TSA (worker registration)
+      CONCOURSE_TSA_HOST_KEY: /concourse-keys/tsa_host_key
+      CONCOURSE_TSA_AUTHORIZED_KEYS: /concourse-keys/authorized_worker_keys
+
+      # Logging
+      CONCOURSE_LOG_LEVEL: info
+
+      # Build retention (keep last 100 builds)
+      CONCOURSE_DEFAULT_BUILD_LOGS_TO_RETAIN: 100
+
+      # Enable build log streaming
+      CONCOURSE_ENABLE_BUILD_AUDITING: "true"
+
+      # Container placement strategy
+      CONCOURSE_CONTAINER_PLACEMENT_STRATEGY: limit-active-tasks
+
+      # Garbage collection (cleanup old resources)
+      CONCOURSE_GC_INTERVAL: 30m
+    networks:
+      - concourse-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/v1/info"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # Concourse Worker (executes tasks)
+  concourse-worker:
+    image: concourse/concourse:7.11
+    container_name: concourse-worker
+    command: worker
+    privileged: true  # Required for container-based tasks
+    depends_on:
+      concourse-web:
+        condition: service_healthy
+    volumes:
+      - ./keys/worker:/concourse-keys
+      # Mount Docker socket for Docker-in-Docker
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Worker work directory
+      - concourse-worker-data:/worker-state
+    environment:
+      # TSA connection
+      CONCOURSE_TSA_HOST: concourse-web:2222
+      CONCOURSE_TSA_PUBLIC_KEY: /concourse-keys/tsa_host_key.pub
+      CONCOURSE_TSA_WORKER_PRIVATE_KEY: /concourse-keys/worker_key
+
+      # Worker configuration
+      CONCOURSE_WORKER_NAME: local-worker
+      CONCOURSE_WORKER_WORK_DIR: /worker-state
+
+      # Garden (container backend)
+      CONCOURSE_GARDEN_NETWORK_POOL: 10.254.0.0/16
+      CONCOURSE_GARDEN_MAX_CONTAINERS: 250
+
+      # Baggageclaim (volume management)
+      CONCOURSE_BAGGAGECLAIM_DRIVER: overlay
+
+      # Resource types cache
+      CONCOURSE_EPHEMERAL: "false"
+
+      # Logging
+      CONCOURSE_LOG_LEVEL: info
+
+      # Health check timeout
+      CONCOURSE_HEALTHCHECK_TIMEOUT: 5s
+    networks:
+      - concourse-network
+    restart: unless-stopped
+    # Resource limits (adjust based on laptop capacity)
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
+
+networks:
+  concourse-network:
+    driver: bridge
+    name: concourse-network
+
+volumes:
+  concourse-db-data:
+    name: concourse-db-data
+  concourse-worker-data:
+    name: concourse-worker-data

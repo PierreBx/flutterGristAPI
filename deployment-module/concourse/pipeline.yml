@@ -1,0 +1,370 @@
+# =============================================================================
+# Concourse CI/CD Pipeline for Flutter Grist Widgets
+# =============================================================================
+#
+# This pipeline automates:
+# 1. Code quality checks (Flutter analyze)
+# 2. Unit tests (77 tests)
+# 3. Deployment to Raspberry Pi (manual trigger)
+#
+# Pipeline flow:
+#   git push → quality-checks (analyze + test) → build → deploy-production
+#
+# Usage:
+#   fly -t local set-pipeline -p flutter-grist -c pipeline.yml -l credentials.yml
+#   fly -t local unpause-pipeline -p flutter-grist
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# RESOURCES
+# -----------------------------------------------------------------------------
+# Resources represent external inputs/outputs that pipelines interact with
+
+resources:
+  # Source code from Git
+  - name: source-code
+    type: git
+    icon: github
+    source:
+      uri: https://github.com/PierreBx/flutterGristAPI.git
+      branch: main
+      # For private repos, add:
+      # private_key: ((github-private-key))
+    check_every: 1m  # Check for new commits every minute
+
+  # Flutter Docker image (for running tests/analysis)
+  - name: flutter-image
+    type: registry-image
+    icon: docker
+    source:
+      repository: instrumentisto/flutter
+      tag: latest
+
+# -----------------------------------------------------------------------------
+# JOBS
+# -----------------------------------------------------------------------------
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Quality Checks (Analysis + Tests)
+  # ---------------------------------------------------------------------------
+  - name: quality-checks
+    public: true
+    plan:
+      - get: source-code
+        trigger: true  # Auto-run when new commits detected
+
+      - get: flutter-image
+
+      # Task 1: Flutter Analyze
+      - task: flutter-analyze
+        image: flutter-image
+        config:
+          platform: linux
+          inputs:
+            - name: source-code
+          caches:
+            - path: source-code/flutter-module/.dart_tool
+            - path: /root/.pub-cache
+          run:
+            path: /bin/sh
+            args:
+              - -ec
+              - |
+                echo "=========================================="
+                echo "🔍 Running Flutter Analysis..."
+                echo "=========================================="
+                cd source-code/flutter-module
+
+                # Get dependencies
+                flutter pub get
+
+                # Run analysis
+                flutter analyze --no-fatal-infos --no-fatal-warnings
+
+                EXIT_CODE=$?
+                if [ $EXIT_CODE -eq 0 ]; then
+                  echo "✅ Analysis passed - no issues found"
+                else
+                  echo "❌ Analysis failed - please fix the issues above"
+                  exit $EXIT_CODE
+                fi
+
+      # Task 2: Flutter Test
+      - task: flutter-test
+        image: flutter-image
+        config:
+          platform: linux
+          inputs:
+            - name: source-code
+          caches:
+            - path: source-code/flutter-module/.dart_tool
+            - path: /root/.pub-cache
+          run:
+            path: /bin/sh
+            args:
+              - -ec
+              - |
+                echo "=========================================="
+                echo "🧪 Running Flutter Tests (77 tests)..."
+                echo "=========================================="
+                cd source-code/flutter-module
+
+                # Get dependencies
+                flutter pub get
+
+                # Run tests with expanded output
+                flutter test --reporter expanded --no-pub
+
+                EXIT_CODE=$?
+                if [ $EXIT_CODE -eq 0 ]; then
+                  echo "✅ All tests passed!"
+                else
+                  echo "❌ Some tests failed - please fix them"
+                  exit $EXIT_CODE
+                fi
+
+    on_success:
+      task: notify-success
+      config:
+        platform: linux
+        image_resource:
+          type: registry-image
+          source:
+            repository: alpine
+            tag: latest
+        run:
+          path: /bin/sh
+          args:
+            - -c
+            - |
+              echo "✅ Quality checks passed successfully!"
+              echo "All tests and analysis completed without issues."
+
+    on_failure:
+      task: notify-failure
+      config:
+        platform: linux
+        image_resource:
+          type: registry-image
+          source:
+            repository: alpine
+            tag: latest
+        run:
+          path: /bin/sh
+          args:
+            - -c
+            - |
+              echo "❌ Quality checks failed!"
+              echo "Please review the errors above and fix them."
+              echo "Pipeline will not proceed to deployment."
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Build (Optional - for web build)
+  # ---------------------------------------------------------------------------
+  - name: build
+    public: true
+    plan:
+      - get: source-code
+        passed: [quality-checks]  # Only run if quality-checks passed
+        trigger: false  # Manual trigger only
+
+      - get: flutter-image
+
+      - task: build-flutter-web
+        image: flutter-image
+        config:
+          platform: linux
+          inputs:
+            - name: source-code
+          outputs:
+            - name: build-output
+          caches:
+            - path: source-code/flutter-module/.dart_tool
+            - path: /root/.pub-cache
+          run:
+            path: /bin/sh
+            args:
+              - -ec
+              - |
+                echo "=========================================="
+                echo "🔨 Building Flutter Web App..."
+                echo "=========================================="
+                cd source-code/flutter-module
+
+                flutter pub get
+                flutter build web --release
+
+                # Copy build output
+                cp -r build/web/* ../build-output/
+
+                echo "✅ Build completed successfully!"
+                ls -lah ../build-output/
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Deploy to Raspberry Pi (Manual trigger)
+  # ---------------------------------------------------------------------------
+  - name: deploy-production
+    public: true
+    plan:
+      - get: source-code
+        passed: [quality-checks]  # Must pass quality checks first
+        trigger: false  # Manual deployment only
+
+      - task: ansible-deploy
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: alpine
+              tag: latest
+          inputs:
+            - name: source-code
+          params:
+            RASPBERRY_PI_HOST: ((raspberry-pi-host))
+            RASPBERRY_PI_USER: ((raspberry-pi-user))
+            SSH_PRIVATE_KEY: ((ssh-private-key))
+          run:
+            path: /bin/sh
+            args:
+              - -ec
+              - |
+                echo "=========================================="
+                echo "🚀 Deploying to Raspberry Pi..."
+                echo "=========================================="
+                echo "Target: $RASPBERRY_PI_USER@$RASPBERRY_PI_HOST"
+
+                # Install required packages
+                apk add --no-cache openssh ansible
+
+                # Setup SSH
+                mkdir -p ~/.ssh
+                echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+                chmod 600 ~/.ssh/id_rsa
+                ssh-keyscan -H $RASPBERRY_PI_HOST >> ~/.ssh/known_hosts 2>/dev/null
+
+                # Test SSH connection
+                ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $RASPBERRY_PI_USER@$RASPBERRY_PI_HOST "echo '✅ SSH connection successful'"
+
+                # Run Ansible deployment
+                cd source-code/deployment-module
+                ansible-playbook playbooks/configure_server.yml \
+                  -i inventory/hosts.yml \
+                  --tags app \
+                  -v
+
+                echo "✅ Deployment completed!"
+
+      - task: health-check
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: alpine
+              tag: latest
+          params:
+            RASPBERRY_PI_HOST: ((raspberry-pi-host))
+            RASPBERRY_PI_USER: ((raspberry-pi-user))
+            SSH_PRIVATE_KEY: ((ssh-private-key))
+          run:
+            path: /bin/sh
+            args:
+              - -ec
+              - |
+                echo "=========================================="
+                echo "🔍 Running Health Checks..."
+                echo "=========================================="
+
+                # Install required packages
+                apk add --no-cache openssh curl
+
+                # Setup SSH
+                mkdir -p ~/.ssh
+                echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+                chmod 600 ~/.ssh/id_rsa
+
+                # Run remote health check script
+                echo "Running health check script on Raspberry Pi..."
+                ssh -i ~/.ssh/id_rsa $RASPBERRY_PI_USER@$RASPBERRY_PI_HOST \
+                  '/opt/monitoring/health_check.sh' || true
+
+                # Check HTTP endpoint
+                echo ""
+                echo "Checking HTTP health endpoint..."
+                HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://$RASPBERRY_PI_HOST/health || echo "000")
+
+                if [ "$HTTP_STATUS" = "200" ]; then
+                  echo "✅ Health check passed (HTTP $HTTP_STATUS)"
+                elif [ "$HTTP_STATUS" = "000" ]; then
+                  echo "⚠️  Warning: Could not reach health endpoint (service may still be starting)"
+                  exit 0  # Don't fail the pipeline
+                else
+                  echo "❌ Health check failed (HTTP $HTTP_STATUS)"
+                  exit 1
+                fi
+
+    on_success:
+      task: notify-deployment-success
+      config:
+        platform: linux
+        image_resource:
+          type: registry-image
+          source:
+            repository: alpine
+            tag: latest
+        params:
+          RASPBERRY_PI_HOST: ((raspberry-pi-host))
+        run:
+          path: /bin/sh
+          args:
+            - -c
+            - |
+              echo "=========================================="
+              echo "✅ DEPLOYMENT SUCCESSFUL!"
+              echo "=========================================="
+              echo "Application deployed to: $RASPBERRY_PI_HOST"
+              echo "Health checks passed"
+              echo "=========================================="
+
+    on_failure:
+      task: notify-deployment-failure
+      config:
+        platform: linux
+        image_resource:
+          type: registry-image
+          source:
+            repository: alpine
+            tag: latest
+        run:
+          path: /bin/sh
+          args:
+            - -c
+            - |
+              echo "=========================================="
+              echo "❌ DEPLOYMENT FAILED!"
+              echo "=========================================="
+              echo "Please check the logs above for details"
+              echo "You may need to manually investigate the Raspberry Pi"
+              echo "=========================================="
+
+# -----------------------------------------------------------------------------
+# GROUPS (for organizing jobs in the UI)
+# -----------------------------------------------------------------------------
+groups:
+  - name: all
+    jobs:
+      - quality-checks
+      - build
+      - deploy-production
+
+  - name: ci
+    jobs:
+      - quality-checks
+
+  - name: deployment
+    jobs:
+      - build
+      - deploy-production

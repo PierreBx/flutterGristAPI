@@ -1,0 +1,161 @@
+# =============================================================================
+# Health Check Task
+# =============================================================================
+# Verifies that the deployed application is running correctly on Raspberry Pi
+#
+# Required params:
+#   RASPBERRY_PI_HOST: IP address or hostname of Raspberry Pi
+#   RASPBERRY_PI_USER: SSH user for deployment
+#   SSH_PRIVATE_KEY: SSH private key for authentication
+#
+# Usage in pipeline:
+#   - task: health-check
+#     file: concourse/tasks/health-check.yml
+#     params:
+#       RASPBERRY_PI_HOST: ((raspberry-pi-host))
+#       RASPBERRY_PI_USER: ((raspberry-pi-user))
+#       SSH_PRIVATE_KEY: ((ssh-private-key))
+#
+# =============================================================================
+
+platform: linux
+
+image_resource:
+  type: registry-image
+  source:
+    repository: alpine
+    tag: latest
+
+inputs:
+  - name: source-code
+    optional: true
+
+params:
+  RASPBERRY_PI_HOST:
+  RASPBERRY_PI_USER:
+  SSH_PRIVATE_KEY:
+  HEALTH_ENDPOINT: /health  # Default health check endpoint
+  TIMEOUT: 300  # Wait up to 5 minutes for service to start
+
+run:
+  path: /bin/sh
+  args:
+    - -ec
+    - |
+      echo "=========================================="
+      echo "🔍 Health Check"
+      echo "=========================================="
+      echo "Target: $RASPBERRY_PI_HOST"
+      echo "Timeout: ${TIMEOUT}s"
+      echo ""
+
+      # Install required packages
+      echo "Installing dependencies..."
+      apk add --no-cache openssh curl
+
+      # Setup SSH
+      echo "Setting up SSH..."
+      mkdir -p ~/.ssh
+      echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+      chmod 600 ~/.ssh/id_rsa
+      ssh-keyscan -H $RASPBERRY_PI_HOST >> ~/.ssh/known_hosts 2>/dev/null
+
+      # Run remote health check script
+      echo ""
+      echo "=========================================="
+      echo "Running system health check script..."
+      echo "=========================================="
+
+      if ssh -i ~/.ssh/id_rsa $RASPBERRY_PI_USER@$RASPBERRY_PI_HOST \
+           'test -f /opt/monitoring/health_check.sh' 2>/dev/null; then
+        ssh -i ~/.ssh/id_rsa $RASPBERRY_PI_USER@$RASPBERRY_PI_HOST \
+          '/opt/monitoring/health_check.sh' || echo "⚠️  Health check script had warnings (non-fatal)"
+      else
+        echo "⚠️  Health check script not found at /opt/monitoring/health_check.sh"
+        echo "Skipping system health check..."
+      fi
+
+      # Check Docker containers
+      echo ""
+      echo "=========================================="
+      echo "Checking Docker containers..."
+      echo "=========================================="
+
+      CONTAINERS=$(ssh -i ~/.ssh/id_rsa $RASPBERRY_PI_USER@$RASPBERRY_PI_HOST \
+        'docker ps --format "{{.Names}}: {{.Status}}"' 2>/dev/null || echo "")
+
+      if [ -n "$CONTAINERS" ]; then
+        echo "$CONTAINERS"
+        echo "✅ Docker containers are running"
+      else
+        echo "⚠️  No Docker containers found or Docker not accessible"
+      fi
+
+      # Check HTTP endpoint (with retry logic)
+      echo ""
+      echo "=========================================="
+      echo "Checking HTTP health endpoint..."
+      echo "=========================================="
+      echo "Endpoint: http://$RASPBERRY_PI_HOST$HEALTH_ENDPOINT"
+      echo ""
+
+      WAITED=0
+      RETRY_INTERVAL=10
+      SUCCESS=0
+
+      while [ $WAITED -lt $TIMEOUT ]; do
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+          --connect-timeout 5 \
+          http://$RASPBERRY_PI_HOST$HEALTH_ENDPOINT 2>/dev/null || echo "000")
+
+        if [ "$HTTP_STATUS" = "200" ]; then
+          echo "✅ Health endpoint returned HTTP $HTTP_STATUS"
+          SUCCESS=1
+          break
+        elif [ "$HTTP_STATUS" = "000" ]; then
+          echo "⏳ Waiting for service to start... (${WAITED}s / ${TIMEOUT}s)"
+        else
+          echo "⚠️  Health endpoint returned HTTP $HTTP_STATUS (${WAITED}s / ${TIMEOUT}s)"
+        fi
+
+        sleep $RETRY_INTERVAL
+        WAITED=$((WAITED + RETRY_INTERVAL))
+      done
+
+      echo ""
+      echo "=========================================="
+      if [ $SUCCESS -eq 1 ]; then
+        echo "✅ HEALTH CHECK PASSED"
+        echo "=========================================="
+        echo "Application is running and responding correctly"
+      else
+        echo "❌ HEALTH CHECK FAILED"
+        echo "=========================================="
+        echo "Health endpoint did not respond with HTTP 200 after ${TIMEOUT}s"
+        echo ""
+        echo "Possible causes:"
+        echo "  1. Application failed to start"
+        echo "  2. Health endpoint not configured"
+        echo "  3. Network issues"
+        echo "  4. Application needs more time to start"
+        echo ""
+        echo "Manual investigation required:"
+        echo "  ssh $RASPBERRY_PI_USER@$RASPBERRY_PI_HOST"
+        echo "  docker ps"
+        echo "  docker logs <container-name>"
+        exit 1
+      fi
+
+      # Display summary
+      echo ""
+      echo "=========================================="
+      echo "📊 Health Check Summary"
+      echo "=========================================="
+      echo "✅ SSH connection: OK"
+      if [ -n "$CONTAINERS" ]; then
+        echo "✅ Docker containers: Running"
+      else
+        echo "⚠️  Docker containers: Not verified"
+      fi
+      echo "✅ HTTP endpoint: Responding (200 OK)"
+      echo "=========================================="

@@ -1,0 +1,119 @@
+# =============================================================================
+# Ansible Deploy Task
+# =============================================================================
+# Deploys application to Raspberry Pi using Ansible
+#
+# Required params:
+#   RASPBERRY_PI_HOST: IP address or hostname of Raspberry Pi
+#   RASPBERRY_PI_USER: SSH user for deployment
+#   SSH_PRIVATE_KEY: SSH private key for authentication
+#
+# Usage in pipeline:
+#   - task: deploy-ansible
+#     file: concourse/tasks/deploy-ansible.yml
+#     params:
+#       RASPBERRY_PI_HOST: ((raspberry-pi-host))
+#       RASPBERRY_PI_USER: ((raspberry-pi-user))
+#       SSH_PRIVATE_KEY: ((ssh-private-key))
+#
+# =============================================================================
+
+platform: linux
+
+image_resource:
+  type: registry-image
+  source:
+    repository: alpine
+    tag: latest
+
+inputs:
+  - name: source-code
+
+params:
+  RASPBERRY_PI_HOST:
+  RASPBERRY_PI_USER:
+  SSH_PRIVATE_KEY:
+  ANSIBLE_TAGS: app  # Default to app tag, can be overridden
+
+run:
+  path: /bin/sh
+  args:
+    - -ec
+    - |
+      echo "=========================================="
+      echo "🚀 Ansible Deployment to Raspberry Pi"
+      echo "=========================================="
+      echo "Target: $RASPBERRY_PI_USER@$RASPBERRY_PI_HOST"
+      echo "Tags: $ANSIBLE_TAGS"
+      echo ""
+
+      # Install required packages
+      echo "Installing dependencies..."
+      apk add --no-cache openssh ansible python3 py3-pip
+      pip3 install --no-cache-dir ansible-core >/dev/null 2>&1 || true
+
+      # Setup SSH
+      echo "Setting up SSH authentication..."
+      mkdir -p ~/.ssh
+      echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+      chmod 600 ~/.ssh/id_rsa
+      ssh-keyscan -H $RASPBERRY_PI_HOST >> ~/.ssh/known_hosts 2>/dev/null
+
+      # Test SSH connection
+      echo ""
+      echo "Testing SSH connection..."
+      if ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+           $RASPBERRY_PI_USER@$RASPBERRY_PI_HOST "echo 'SSH connection successful'" ; then
+        echo "✅ SSH connection established"
+      else
+        echo "❌ Failed to connect via SSH"
+        echo "Please check:"
+        echo "  1. Raspberry Pi is powered on and connected to network"
+        echo "  2. SSH key is authorized on the Pi"
+        echo "  3. Firewall allows SSH connections"
+        exit 1
+      fi
+
+      # Navigate to deployment module
+      cd source-code/deployment-module
+
+      # Check if inventory file exists
+      if [ ! -f inventory/hosts.yml ]; then
+        echo "⚠️  Warning: inventory/hosts.yml not found"
+        echo "Using hosts.example as template..."
+        if [ -f inventory/hosts.example ]; then
+          cp inventory/hosts.example inventory/hosts.yml
+        else
+          echo "❌ No inventory file found"
+          exit 1
+        fi
+      fi
+
+      # Run Ansible playbook
+      echo ""
+      echo "=========================================="
+      echo "Running Ansible playbook..."
+      echo "=========================================="
+
+      ansible-playbook playbooks/configure_server.yml \
+        -i inventory/hosts.yml \
+        --tags "$ANSIBLE_TAGS" \
+        --extra-vars "ansible_host=$RASPBERRY_PI_HOST ansible_user=$RASPBERRY_PI_USER" \
+        -v
+
+      EXIT_CODE=$?
+
+      echo ""
+      echo "=========================================="
+      if [ $EXIT_CODE -eq 0 ]; then
+        echo "✅ Deployment completed successfully!"
+        echo "=========================================="
+        echo ""
+        echo "Application deployed to: $RASPBERRY_PI_HOST"
+        echo "Next: Health checks will verify the deployment"
+      else
+        echo "❌ Deployment failed!"
+        echo "=========================================="
+        echo "Check the Ansible output above for details"
+        exit $EXIT_CODE
+      fi

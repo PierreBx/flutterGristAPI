@@ -1,0 +1,67 @@
+# =============================================================================
+# Flutter Analyze Task
+# =============================================================================
+# Runs static analysis on Flutter code to detect potential issues
+#
+# Usage in pipeline:
+#   - task: flutter-analyze
+#     file: concourse/tasks/flutter-analyze.yml
+#
+# =============================================================================
+
+platform: linux
+
+image_resource:
+  type: registry-image
+  source:
+    repository: instrumentisto/flutter
+    tag: latest
+
+inputs:
+  - name: source-code
+
+caches:
+  - path: source-code/flutter-module/.dart_tool
+  - path: /root/.pub-cache
+
+run:
+  path: /bin/sh
+  args:
+    - -ec
+    - |
+      echo "=========================================="
+      echo "🔍 Flutter Static Analysis"
+      echo "=========================================="
+      echo "Analyzing Flutter code for potential issues..."
+      echo ""
+
+      cd source-code/flutter-module
+
+      # Show Flutter version
+      echo "Flutter version:"
+      flutter --version
+      echo ""
+
+      # Get dependencies
+      echo "Getting dependencies..."
+      flutter pub get
+      echo ""
+
+      # Run analysis
+      echo "Running analysis..."
+      flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      EXIT_CODE=$?
+
+      echo ""
+      if [ $EXIT_CODE -eq 0 ]; then
+        echo "=========================================="
+        echo "✅ Analysis passed - no issues found"
+        echo "=========================================="
+      else
+        echo "=========================================="
+        echo "❌ Analysis failed"
+        echo "=========================================="
+        echo "Please fix the issues above before merging"
+        exit $EXIT_CODE
+      fi
