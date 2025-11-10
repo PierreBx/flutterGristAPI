@@ -1,0 +1,200 @@
+---
+# =============================================================================
+# Full Server Configuration with DevOps Enhancements (Phase 1)
+# =============================================================================
+# This playbook configures a Raspberry Pi with:
+# - Base system setup (common)
+# - Security hardening (security)
+# - Docker environment (docker)
+# - System monitoring (monitoring)
+# - Automated backups (backup) - NEW
+# - SSL/TLS automation (ssl) - NEW
+# - Application environment (app_environment)
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.yml playbooks/configure_with_enhancements.yml
+#
+# Required variables (set in inventory or command line):
+#   - domain_name: your-domain.com
+#   - admin_email: admin@your-domain.com
+# =============================================================================
+
+- name: Configure Flutter Grist API Server with DevOps Enhancements
+  hosts: production
+  become: yes
+  gather_facts: yes
+
+  # ==========================================================================
+  # Variables
+  # ==========================================================================
+  vars:
+    # REQUIRED: Set these for SSL/TLS
+    # domain_name: your-domain.com        # Uncomment and set
+    # admin_email: admin@your-domain.com  # Uncomment and set
+
+    # Application configuration
+    app_name: flutter_grist_app
+    app_user: flutterapp
+    app_base_dir: /opt/flutter_grist_app
+
+    # Backup configuration
+    backup_base_dir: /opt/backups
+    backup_retention_daily: 7      # Keep daily backups for 7 days
+    backup_retention_weekly: 28    # Keep weekly backups for 4 weeks
+    backup_retention_monthly: 90   # Keep monthly backups for 3 months
+    backup_cron_hour: "2"          # Run backups at 2 AM
+    backup_cron_minute: "0"
+
+    # Grist configuration
+    grist_data_dir: /opt/grist/data
+    app_config_dir: "{{ app_base_dir }}/config"
+
+    # SSL configuration
+    ssl_protocols: "TLSv1.2 TLSv1.3"
+    ssl_hsts_enabled: true
+    ssl_hsts_max_age: 31536000     # 1 year
+    ssl_ocsp_stapling: true
+    ssl_generate_dhparam: true
+    ssl_expiry_warning_days: 30
+
+    # For testing: use Let's Encrypt staging (no rate limits)
+    # certbot_staging: true
+
+  # ==========================================================================
+  # Pre-tasks
+  # ==========================================================================
+  pre_tasks:
+    - name: Display deployment information
+      debug:
+        msg:
+          - "================================================"
+          - "Flutter Grist API - Enhanced Deployment"
+          - "================================================"
+          - "Target host: {{ inventory_hostname }}"
+          - "Application: {{ app_name }}"
+          - "User: {{ app_user }}"
+          - "Base directory: {{ app_base_dir }}"
+          - "Backup directory: {{ backup_base_dir }}"
+          - "Domain: {{ domain_name | default('NOT SET - SSL will be skipped') }}"
+          - "================================================"
+
+    - name: Check if domain name is set for SSL
+      fail:
+        msg: |
+          Domain name is required for SSL setup!
+          Set it in inventory/group_vars/production.yml:
+            domain_name: your-domain.com
+            admin_email: admin@your-domain.com
+      when:
+        - domain_name is not defined or domain_name == ""
+        - "'ssl' in ansible_run_tags or ansible_run_tags == ['all']"
+      tags: ['ssl']
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+  # ==========================================================================
+  # Roles
+  # ==========================================================================
+  roles:
+    # Base system configuration
+    - role: common
+      tags: ['common', 'base']
+
+    # Security hardening (SSH, firewall, fail2ban)
+    - role: security
+      tags: ['security']
+
+    # Docker and Docker Compose
+    - role: docker
+      tags: ['docker']
+
+    # System monitoring tools
+    - role: monitoring
+      tags: ['monitoring']
+
+    # Automated backups (NEW - Phase 1)
+    - role: backup
+      tags: ['backup']
+
+    # SSL/TLS automation (NEW - Phase 1)
+    - role: ssl
+      tags: ['ssl']
+      when: domain_name is defined and domain_name != ""
+
+    # Application environment setup
+    - role: app_environment
+      tags: ['app', 'app_environment']
+
+  # ==========================================================================
+  # Post-tasks
+  # ==========================================================================
+  post_tasks:
+    - name: Display deployment summary
+      debug:
+        msg:
+          - "================================================"
+          - "✅ DEPLOYMENT COMPLETE"
+          - "================================================"
+          - "Services configured:"
+          - "  ✓ Base system (common)"
+          - "  ✓ Security hardening (SSH, UFW, fail2ban)"
+          - "  ✓ Docker environment"
+          - "  ✓ System monitoring (htop, iotop, sysstat)"
+          - "  ✓ Automated backups (daily/weekly/monthly)"
+          - "  ✓ SSL/TLS with auto-renewal"
+          - "  ✓ Application environment"
+          - ""
+          - "Next steps:"
+          - "  1. Verify backups: ssh {{ ansible_user }}@{{ inventory_hostname }} 'sudo /opt/scripts/backup.sh stats'"
+          - "  2. Check SSL: curl -I https://{{ domain_name | default('your-domain.com') }}"
+          - "  3. Run manual backup: ssh {{ ansible_user }}@{{ inventory_hostname }} 'sudo /opt/scripts/backup.sh daily'"
+          - "  4. View logs: ssh {{ ansible_user }}@{{ inventory_hostname }} 'sudo tail -f /var/log/backup.log'"
+          - ""
+          - "Access:"
+          - "  - HTTP: http://{{ inventory_hostname }}"
+          - "  - HTTPS: https://{{ domain_name | default('not-configured') }}"
+          - "  - SSH: ssh {{ ansible_user }}@{{ inventory_hostname }}"
+          - "================================================"
+
+    - name: Run initial backup
+      command: /opt/scripts/backup.sh daily
+      async: 300
+      poll: 0
+      register: initial_backup
+      ignore_errors: yes
+
+    - name: Display backup job info
+      debug:
+        msg:
+          - "Initial backup started in background"
+          - "Check status: sudo tail -f /var/log/backup.log"
+
+# =============================================================================
+# Usage Examples
+# =============================================================================
+#
+# Full deployment with all enhancements:
+#   ansible-playbook -i inventory/hosts.yml playbooks/configure_with_enhancements.yml
+#
+# Deploy only specific components:
+#   ansible-playbook -i inventory/hosts.yml playbooks/configure_with_enhancements.yml --tags backup
+#   ansible-playbook -i inventory/hosts.yml playbooks/configure_with_enhancements.yml --tags ssl
+#   ansible-playbook -i inventory/hosts.yml playbooks/configure_with_enhancements.yml --tags backup,ssl
+#
+# Dry run (check mode):
+#   ansible-playbook -i inventory/hosts.yml playbooks/configure_with_enhancements.yml --check
+#
+# Verbose output:
+#   ansible-playbook -i inventory/hosts.yml playbooks/configure_with_enhancements.yml -v
+#   ansible-playbook -i inventory/hosts.yml playbooks/configure_with_enhancements.yml -vv
+#
+# Override variables:
+#   ansible-playbook -i inventory/hosts.yml playbooks/configure_with_enhancements.yml \
+#     -e "domain_name=my-app.com" \
+#     -e "admin_email=admin@my-app.com" \
+#     -e "backup_retention_daily=14"
+#
+# =============================================================================

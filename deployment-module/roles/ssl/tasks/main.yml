@@ -1,0 +1,177 @@
+---
+# =============================================================================
+# SSL/TLS Role - Automated Certificate Management
+# =============================================================================
+# This role automates SSL/TLS certificate provisioning using Let's Encrypt
+#
+# Features:
+# - Automated certificate issuance via certbot
+# - Automatic renewal (cron job)
+# - Nginx SSL configuration
+# - Strong security settings (TLS 1.3, HSTS, etc.)
+# - Certificate expiry monitoring
+# =============================================================================
+
+- name: Check if domain name is configured
+  fail:
+    msg: "domain_name variable is required for SSL setup"
+  when: domain_name is not defined or domain_name == ""
+
+- name: Check if admin email is configured
+  fail:
+    msg: "admin_email variable is required for SSL setup"
+  when: admin_email is not defined or admin_email == ""
+
+- name: Install certbot and dependencies
+  apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+    update_cache: yes
+
+- name: Check if certificate already exists
+  stat:
+    path: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+  register: existing_cert
+
+- name: Ensure Nginx is running (required for certbot)
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Deploy temporary Nginx config for certificate challenge
+  template:
+    src: nginx-pre-ssl.conf.j2
+    dest: /etc/nginx/sites-available/{{ app_name }}
+    owner: root
+    group: root
+    mode: '0644'
+  when: not existing_cert.stat.exists
+  notify: reload nginx
+
+- name: Ensure sites-enabled symlink exists
+  file:
+    src: /etc/nginx/sites-available/{{ app_name }}
+    dest: /etc/nginx/sites-enabled/{{ app_name }}
+    state: link
+  when: not existing_cert.stat.exists
+
+- name: Reload Nginx for pre-SSL config
+  systemd:
+    name: nginx
+    state: reloaded
+  when: not existing_cert.stat.exists
+
+- name: Obtain SSL certificate from Let's Encrypt
+  command: >
+    certbot certonly
+    --nginx
+    --non-interactive
+    --agree-tos
+    --email {{ admin_email }}
+    --domains {{ domain_name }}
+    {% if certbot_staging | default(false) %}--staging{% endif %}
+  args:
+    creates: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
+  register: certbot_result
+
+- name: Display certbot result
+  debug:
+    var: certbot_result
+  when: certbot_result.changed
+
+- name: Generate strong Diffie-Hellman parameters
+  command: openssl dhparam -out /etc/nginx/dhparam.pem 2048
+  args:
+    creates: /etc/nginx/dhparam.pem
+  when: ssl_generate_dhparam | default(true)
+
+- name: Deploy SSL-enabled Nginx configuration
+  template:
+    src: nginx-ssl.conf.j2
+    dest: /etc/nginx/sites-available/{{ app_name }}
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload nginx
+
+- name: Test Nginx configuration
+  command: nginx -t
+  changed_when: false
+
+- name: Setup automatic certificate renewal
+  cron:
+    name: "Certbot certificate renewal"
+    minute: "0"
+    hour: "3"
+    day: "*/7"  # Every 7 days
+    job: "certbot renew --quiet --post-hook 'systemctl reload nginx' >> /var/log/certbot-renew.log 2>&1"
+    user: root
+    state: present
+
+- name: Create certificate expiry check script
+  template:
+    src: check-cert-expiry.sh.j2
+    dest: /opt/scripts/check-cert-expiry.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Setup certificate expiry monitoring
+  cron:
+    name: "Check SSL certificate expiry"
+    minute: "0"
+    hour: "9"
+    job: "/opt/scripts/check-cert-expiry.sh {{ domain_name }}"
+    user: root
+    state: present
+
+- name: Create certbot renewal log file
+  file:
+    path: /var/log/certbot-renew.log
+    state: touch
+    owner: root
+    group: root
+    mode: '0644'
+    modification_time: preserve
+    access_time: preserve
+
+- name: Setup log rotation for certbot logs
+  copy:
+    content: |
+      /var/log/certbot-renew.log {
+          daily
+          rotate 14
+          compress
+          delaycompress
+          missingok
+          notifempty
+          create 0644 root root
+      }
+    dest: /etc/logrotate.d/certbot
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Display SSL configuration summary
+  debug:
+    msg:
+      - "================================================"
+      - "SSL/TLS Configuration Complete"
+      - "================================================"
+      - "Domain: {{ domain_name }}"
+      - "Certificate path: /etc/letsencrypt/live/{{ domain_name }}/"
+      - "Auto-renewal: Every 7 days at 3:00 AM"
+      - "Expiry check: Daily at 9:00 AM"
+      - ""
+      - "Certificate details:"
+      - "  - TLS 1.2 and 1.3 enabled"
+      - "  - HSTS enabled ({{ ssl_hsts_max_age }} seconds)"
+      - "  - Strong cipher suites configured"
+      - ""
+      - "Test your SSL: https://www.ssllabs.com/ssltest/"
+      - "Manual renewal: sudo certbot renew"
+      - "Check cert expiry: sudo /opt/scripts/check-cert-expiry.sh {{ domain_name }}"
+      - "================================================"
