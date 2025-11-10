@@ -1,0 +1,57 @@
+# Git files
+.git
+.gitignore
+
+# Documentation
+README.md
+QUICKSTART.md
+*.md
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Reports and logs
+reports/
+*.log
+ansible.log
+
+# Temporary files
+*.tmp
+*.bak
+.~*
+
+# Inventory files with sensitive data (use hosts.example instead)
+inventory/hosts.yml
+inventory/*.yml
+!inventory/hosts.example
+
+# Group vars with sensitive data
+group_vars/
+host_vars/
+
+# Scripts (not needed in container)
+scripts/
+
+# Makefile
+Makefile
