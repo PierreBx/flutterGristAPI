@@ -11,3 +11,11 @@ export 'src/config/yaml_loader.dart';
 export 'src/models/user_model.dart';
 export 'src/services/grist_service.dart';
 export 'src/providers/auth_provider.dart';
+export 'src/utils/validators.dart';
+
+// Widget exports
+export 'src/widgets/file_upload_widget.dart';
+export 'src/widgets/grist_table_widget.dart';
+
+// Page exports
+export 'src/pages/data_create_page.dart';
