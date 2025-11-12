@@ -10,11 +10,58 @@ class GristService {
 
   GristService(this.config);
 
-  /// Fetches all records from a table.
-  Future<List<Map<String, dynamic>>> fetchRecords(String tableName) async {
+  /// Fetches records from a table with optional filtering, pagination, and sorting.
+  ///
+  /// Parameters:
+  /// - [tableName]: The name of the table to fetch from
+  /// - [filter]: Optional Grist filter formula (e.g., "Name.contains('John')")
+  /// - [limit]: Optional maximum number of records to return
+  /// - [offset]: Optional number of records to skip
+  /// - [sort]: Optional column name to sort by (prefix with '-' for descending)
+  ///
+  /// Example:
+  /// ```dart
+  /// // Fetch all records
+  /// final records = await gristService.fetchRecords('Users');
+  ///
+  /// // Fetch with search filter
+  /// final filtered = await gristService.fetchRecords(
+  ///   'Users',
+  ///   filter: "Name.contains('John')",
+  /// );
+  ///
+  /// // Fetch with pagination
+  /// final page = await gristService.fetchRecords(
+  ///   'Users',
+  ///   limit: 20,
+  ///   offset: 40,
+  /// );
+  /// ```
+  Future<List<Map<String, dynamic>>> fetchRecords(
+    String tableName, {
+    String? filter,
+    int? limit,
+    int? offset,
+    String? sort,
+  }) async {
+    final queryParams = <String, String>{};
+
+    if (filter != null && filter.isNotEmpty) {
+      queryParams['filter'] = filter;
+    }
+    if (limit != null) {
+      queryParams['limit'] = limit.toString();
+    }
+    if (offset != null) {
+      queryParams['offset'] = offset.toString();
+    }
+    if (sort != null && sort.isNotEmpty) {
+      queryParams['sort'] = sort;
+    }
+
     final url = Uri.parse(
       '${config.baseUrl}/api/docs/${config.documentId}/tables/$tableName/records',
-    );
+    ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
     final response = await http.get(
       url,
@@ -295,6 +342,26 @@ class GristService {
         }
       }
 
+      // Extract reference table information for Reference fields
+      if (config['type'] == 'reference' || config['type'] == 'multi_reference') {
+        final refTable = fields['refTable'] as String?;
+        if (refTable != null) {
+          config['reference_table'] = refTable;
+
+          // Try to extract visible columns from widget options
+          final widgetOptions = fields['widgetOptions'] as Map<String, dynamic>?;
+          final visibleCol = widgetOptions?['visibleCol'] as String?;
+          if (visibleCol != null && visibleCol.isNotEmpty) {
+            config['display_fields'] = [visibleCol];
+          } else {
+            // Default to common field names
+            config['display_fields'] = ['name'];
+          }
+
+          config['value_field'] = 'id';
+        }
+      }
+
       // Mark formula fields as readonly
       final isFormula = fields['isFormula'] as bool? ?? false;
       if (isFormula) {
@@ -327,6 +394,11 @@ class GristService {
         return 'choice';
       case 'choicelist':
         return 'multiselect';
+      case 'ref':
+      case 'reference':
+        return 'reference';
+      case 'reflist':
+        return 'multi_reference';
       case 'attachments':
         return 'file';
       case 'text':

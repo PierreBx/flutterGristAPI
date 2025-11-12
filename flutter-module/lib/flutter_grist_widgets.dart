@@ -16,6 +16,16 @@ export 'src/utils/validators.dart';
 // Widget exports
 export 'src/widgets/file_upload_widget.dart';
 export 'src/widgets/grist_table_widget.dart';
+export 'src/widgets/field_widgets/reference_field_widget.dart';
+export 'src/widgets/field_widgets/date_field_widget.dart';
+export 'src/widgets/field_widgets/choice_field_widget.dart';
+export 'src/widgets/field_widgets/boolean_field_widget.dart';
+export 'src/widgets/field_widgets/multi_select_field_widget.dart';
+
+// Utility exports
+export 'src/utils/field_type_builder.dart';
+export 'src/utils/column_filter_utils.dart';
+export 'src/utils/export_utils.dart';
 
 // Page exports
 export 'src/pages/data_create_page.dart';

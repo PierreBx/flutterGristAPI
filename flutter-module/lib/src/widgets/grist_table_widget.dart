@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'skeleton_loader.dart';
+import '../utils/column_filter_utils.dart';
 
 /// Configuration for a table column.
 class TableColumnConfig {
@@ -78,12 +79,15 @@ class _GristTableWidgetState extends State<GristTableWidget> {
   int? _sortColumnIndex;
   bool _sortAscending = true;
   List<Map<String, dynamic>> _sortedRecords = [];
+  List<Map<String, dynamic>> _filteredRecords = [];
   int _currentPage = 0;
+  final List<ColumnFilter> _activeFilters = [];
 
   @override
   void initState() {
     super.initState();
     _sortedRecords = List.from(widget.records);
+    _applyFilters();
   }
 
   @override
@@ -94,6 +98,69 @@ class _GristTableWidgetState extends State<GristTableWidget> {
       if (_sortColumnIndex != null) {
         _sortData(_sortColumnIndex!, _sortAscending);
       }
+      _applyFilters();
+    }
+  }
+
+  void _applyFilters() {
+    setState(() {
+      if (_activeFilters.isEmpty) {
+        _filteredRecords = List.from(_sortedRecords);
+      } else {
+        _filteredRecords = _sortedRecords.where((record) {
+          return _activeFilters.every((filter) => filter.matches(record));
+        }).toList();
+      }
+      _currentPage = 0; // Reset to first page after filtering
+    });
+  }
+
+  void _addOrUpdateFilter(ColumnFilter filter) {
+    setState(() {
+      // Remove existing filter for this column
+      _activeFilters.removeWhere((f) => f.columnName == filter.columnName);
+      // Add new filter
+      _activeFilters.add(filter);
+      _applyFilters();
+    });
+  }
+
+  void _removeFilter(ColumnFilter filter) {
+    setState(() {
+      _activeFilters.remove(filter);
+      _applyFilters();
+    });
+  }
+
+  void _clearAllFilters() {
+    setState(() {
+      _activeFilters.clear();
+      _applyFilters();
+    });
+  }
+
+  Future<void> _showFilterDialog(TableColumnConfig column) async {
+    final filter = await showDialog<ColumnFilter>(
+      context: context,
+      builder: (context) => ColumnFilterDialog(
+        columnName: column.name,
+        columnLabel: column.label,
+        columnType: column.type,
+        existingFilter: _activeFilters.firstWhere(
+          (f) => f.columnName == column.name,
+          orElse: () => ColumnFilter(
+            columnName: '',
+            columnLabel: '',
+            operator: FilterOperator.contains,
+          ),
+        ).columnName.isEmpty
+            ? null
+            : _activeFilters.firstWhere((f) => f.columnName == column.name),
+      ),
+    );
+
+    if (filter != null) {
+      _addOrUpdateFilter(filter);
     }
   }
 
@@ -170,27 +237,28 @@ class _GristTableWidgetState extends State<GristTableWidget> {
       }
 
       _currentPage = 0; // Reset to first page after sorting
+      _applyFilters(); // Re-apply filters after sorting
     });
   }
 
   List<Map<String, dynamic>> _getCurrentPageRecords() {
     if (widget.rowsPerPage == null) {
-      return _sortedRecords;
+      return _filteredRecords;
     }
 
     final startIndex = _currentPage * widget.rowsPerPage!;
-    final endIndex = (startIndex + widget.rowsPerPage!).clamp(0, _sortedRecords.length);
+    final endIndex = (startIndex + widget.rowsPerPage!).clamp(0, _filteredRecords.length);
 
-    if (startIndex >= _sortedRecords.length) {
+    if (startIndex >= _filteredRecords.length) {
       return [];
     }
 
-    return _sortedRecords.sublist(startIndex, endIndex);
+    return _filteredRecords.sublist(startIndex, endIndex);
   }
 
   int get _totalPages {
     if (widget.rowsPerPage == null) return 1;
-    return (_sortedRecords.length / widget.rowsPerPage!).ceil();
+    return (_filteredRecords.length / widget.rowsPerPage!).ceil();
   }
 
   @override
@@ -248,10 +316,26 @@ class _GristTableWidgetState extends State<GristTableWidget> {
         (entry) {
           final index = entry.key + (widget.showIdColumn ? 1 : 0);
           final col = entry.value;
+          final hasFilter = _activeFilters.any((f) => f.columnName == col.name);
+
           return DataColumn(
-            label: Text(
-              col.label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  col.label,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 4),
+                InkWell(
+                  onTap: () => _showFilterDialog(col),
+                  child: Icon(
+                    hasFilter ? Icons.filter_alt : Icons.filter_alt_outlined,
+                    size: 16,
+                    color: hasFilter ? Theme.of(context).primaryColor : Colors.grey,
+                  ),
+                ),
+              ],
             ),
             onSort: widget.enableSorting && col.sortable
                 ? (columnIndex, ascending) {
@@ -285,6 +369,64 @@ class _GristTableWidgetState extends State<GristTableWidget> {
 
     return Column(
       children: [
+        // Active filters display
+        if (_activeFilters.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey.shade300),
+              ),
+            ),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ..._activeFilters.map((filter) {
+                  return Chip(
+                    avatar: const Icon(Icons.filter_alt, size: 16),
+                    label: Text(
+                      filter.description,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                    onDeleted: () => _removeFilter(filter),
+                  );
+                }),
+                // Clear all button
+                ActionChip(
+                  avatar: const Icon(Icons.clear_all, size: 16),
+                  label: const Text(
+                    'Clear All',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  onPressed: _clearAllFilters,
+                ),
+              ],
+            ),
+          ),
+
+        // Record count with filter info
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.grey.shade300),
+            ),
+          ),
+          child: Row(
+            children: [
+              Text(
+                _activeFilters.isEmpty
+                    ? 'Showing ${_filteredRecords.length} records'
+                    : 'Showing ${_filteredRecords.length} of ${widget.records.length} records',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+
         Expanded(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
