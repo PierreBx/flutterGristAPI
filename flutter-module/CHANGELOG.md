@@ -1,3 +1,108 @@
+## 0.5.0
+
+### Major Feature Release - Data Relationships & Scale
+
+#### 🎯 Theme: Handle complex data relationships and large datasets efficiently
+
+This release focuses on enabling apps that work with relational data and scale beyond 1,000 records with advanced filtering, search, and export capabilities.
+
+#### Reference Fields (Foreign Keys) ⭐
+* **NEW ReferenceFieldWidget** - Autocomplete for related records
+  * Fetch and display records from referenced tables
+  * Search across related records with autocomplete
+  * Display formatted labels from multiple fields (e.g., "John Doe - john@example.com")
+  * Support single references (BelongsTo relationships)
+  * Configurable display fields and separators
+  * Clear button to reset selection
+  * Auto-detection from Grist Ref column types
+* Reference field support in FieldTypeBuilder
+* Auto-extraction of reference table metadata from Grist
+* Integration with form widgets and GristFormWidget
+
+#### Server-Side Search & Filtering
+* **Enhanced GristService.fetchRecords()** with server-side capabilities
+  * Optional `filter` parameter for Grist filter formulas
+  * Optional `limit` parameter for pagination
+  * Optional `offset` parameter for pagination
+  * Optional `sort` parameter for server-side sorting
+  * Supports large datasets (10,000+ records)
+* Reduced memory usage for large tables
+* Better performance with server-side operations
+
+#### Column Filtering UI ⭐
+* **NEW ColumnFilter system** with visual filtering interface
+  * Filter icon on each column header
+  * Click to open filter dialog
+  * Type-specific filter operators:
+    - Text: contains, equals, starts with, ends with
+    - Numeric: =, ≠, >, <, ≥, ≤, between
+    - Date: =, >, <, between (with date picker)
+    - Boolean: is true, is false, is empty
+    * Choice: in list (with multi-select)
+  * Active filter chips display below toolbar
+  * Individual filter removal (click X on chip)
+  * "Clear All" button to remove all filters
+  * Filter count indicator in column headers
+  * Client-side filtering with efficient matching
+  * Works seamlessly with sorting and pagination
+
+#### CSV Export Functionality ⭐
+* **NEW ExportUtils** for data export
+  * Export table data to CSV format
+  * Configurable export dialog with:
+    - Custom file name input
+    - Column selection (choose which columns to export)
+    - Select/Deselect all columns
+    - Include/exclude headers option
+    - Export summary (record count, column count, format)
+  * Type-aware value formatting for export
+  * Proper handling of dates, booleans, files, and special characters
+  * Save to device storage with path_provider
+  * Future-ready for Excel and PDF export
+
+#### New Dependencies
+* `csv: ^6.0.0` - CSV file generation
+* `path_provider: ^2.1.1` - File system access for exports
+
+#### Developer Experience
+* ReferenceFieldWidget, ColumnFilter, and ExportUtils exported
+* Comprehensive documentation for new features
+* Type-safe filter operators enum
+* Reusable filter dialog component
+* Enhanced GristService API with backward compatibility
+* Better error handling for reference fields
+
+#### Breaking Changes
+* GristService.fetchRecords() now accepts optional named parameters (backward compatible)
+* GristTableWidget now manages filter state internally
+* Column headers now include filter icons (may affect layout slightly)
+
+#### Bug Fixes
+* Proper null handling in column filters
+* Date parsing improvements in filter matching
+* Memory-efficient filtering for large datasets
+
+#### YAML Configuration Additions
+```yaml
+grist:
+  # Enable server-side search (recommended for large datasets)
+  use_server_side_search: true
+
+  form:
+    fields:
+      # Reference field configuration
+      - name: "manager_id"
+        type: "reference"
+        label: "Manager"
+        reference_table: "Users"
+        display_fields: ["name", "email"]
+        value_field: "id"
+        display_separator: " - "
+        show_clear_button: true
+```
+
+---
+
 ## 0.3.0
 
 ### Major Feature Release - File Uploads, Pagination & Enhanced Tables

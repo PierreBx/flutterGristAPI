@@ -1,6 +1,6 @@
 name: flutter_grist_widgets
 description: A YAML-driven Flutter application generator for Grist. Build complete data-driven apps with authentication, navigation, and forms from a simple YAML configuration.
-version: 0.4.0
+version: 0.5.0
 homepage: https://github.com/yourusername/flutter_grist_widgets
 
 environment:
@@ -22,6 +22,8 @@ dependencies:
   intl: ^0.19.0
   shimmer: ^3.0.0
   fluttertoast: ^8.2.4
+  csv: ^6.0.0
+  path_provider: ^2.1.1
 
 dev_dependencies:
   flutter_test:

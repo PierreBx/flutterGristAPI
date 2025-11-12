@@ -4,6 +4,7 @@ import '../widgets/field_widgets/date_field_widget.dart';
 import '../widgets/field_widgets/choice_field_widget.dart';
 import '../widgets/field_widgets/boolean_field_widget.dart';
 import '../widgets/field_widgets/multi_select_field_widget.dart';
+import '../widgets/field_widgets/reference_field_widget.dart';
 import '../widgets/file_upload_widget.dart';
 
 /// Utility class for building form fields based on field type and configuration.
@@ -161,6 +162,44 @@ class FieldTypeBuilder {
             style: style,
             subtitle: fieldConfig['subtitle'] as String?,
           ),
+        );
+
+      case 'reference':
+      case 'ref':
+        final referenceTable = fieldConfig['reference_table'] as String?;
+        final displayFields =
+            (fieldConfig['display_fields'] as List<dynamic>?)?.cast<String>() ??
+                ['name'];
+        final valueField = fieldConfig['value_field'] as String? ?? 'id';
+
+        if (referenceTable == null) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: TextFormField(
+              controller: controller,
+              decoration: InputDecoration(
+                labelText: label,
+                border: const OutlineInputBorder(),
+                errorText: 'Reference table not configured',
+              ),
+              enabled: false,
+            ),
+          );
+        }
+
+        return ReferenceFieldWidget(
+          label: label,
+          referenceTable: referenceTable,
+          displayFields: displayFields,
+          valueField: valueField,
+          value: value,
+          onChanged: onChanged,
+          required: required,
+          validator: validators?.asFormValidator(),
+          enabled: enabled,
+          hint: fieldConfig['hint'] as String?,
+          displaySeparator: fieldConfig['display_separator'] as String? ?? ' - ',
+          showClearButton: fieldConfig['show_clear_button'] as bool? ?? true,
         );
 
       case 'file':
