@@ -1,3 +1,256 @@
+## 0.9.0
+
+### Major Feature Release - Advanced Input Fields & Batch Operations
+
+#### 🎯 Theme: Rich content editing and powerful bulk data management
+
+This release introduces advanced input field widgets for rich content creation (WYSIWYG editor, color picker, rating system) and a comprehensive batch operations system for selecting and performing bulk actions on table records.
+
+#### Rich Text Editor ⭐
+* **NEW RichTextFieldWidget** - WYSIWYG text editor
+  * Full rich text editing with flutter_quill
+  * Text formatting (bold, italic, underline, strikethrough)
+  * Text alignment (left, center, right, justify)
+  * Lists (bullet points, numbered lists)
+  * Headers (H1, H2, H3)
+  * Block quotes and code blocks
+  * Links and text colors
+  * Undo/redo support
+  * Customizable toolbar
+  * Stores content as JSON (Quill Delta format)
+  * Plain text fallback support
+  * Configurable min/max height
+  * Toolbar positioning (top/bottom)
+* **NEW CompactRichTextFieldWidget** - Compact editor variant
+* **NEW RichTextViewer** - Read-only rich text display
+* Rich text field support in FieldTypeBuilder (types: rich_text, richtext, html)
+
+#### Color Picker ⭐
+* **NEW ColorPickerFieldWidget** - Professional color selection
+  * Multiple picker types:
+    - Material color picker
+    - Block color picker
+    - HSV color picker
+    - RGB sliders
+  * Hex color input with validation
+  * Alpha channel support (opacity)
+  * Color preview display
+  * RGB value display
+  * Predefined color swatches
+  * Recently used colors tracking (last 12)
+  * Custom color swatches support
+  * Stores as hex color strings (#RRGGBB or #AARRGGBB)
+* **NEW CompactColorPickerWidget** - Compact display variant
+* **NEW ColorSwatches** - Predefined color palettes
+  * Material colors (19 colors)
+  * Basic colors (11 colors)
+  * Pastel colors (8 colors)
+* Color field support in FieldTypeBuilder (types: color, color_picker)
+
+#### Rating System ⭐
+* **NEW RatingFieldWidget** - Interactive star ratings
+  * Customizable rating icons:
+    - Star (default)
+    - Heart
+    - Thumb up
+    - Circle
+    - Square
+  * Configurable rating range (default 0-5)
+  * Half-star support
+  * Custom colors for filled/unfilled icons
+  * Rating value display (numeric)
+  * Rating labels (optional text descriptions)
+  * Glow effect on hover
+  * Custom icon sizes
+  * Read-only mode for display
+* **NEW CompactRatingWidget** - Compact display variant
+* **NEW RatingWithBarWidget** - Rating with percentage bar
+* **NEW RatingLabels** - Predefined label sets
+  * Satisfaction (Very Dissatisfied to Very Satisfied)
+  * Quality (Poor to Excellent)
+  * Agreement (Strongly Disagree to Strongly Agree)
+  * Likelihood (Very Unlikely to Very Likely)
+  * Difficulty (Very Easy to Very Hard)
+* Rating field support in FieldTypeBuilder (types: rating, stars)
+
+#### Batch Operations System ⭐
+* **NEW BatchOperationsManager** - Selection state management
+  * Select/deselect individual records
+  * Select all/deselect all
+  * Toggle selection
+  * Track selected count
+  * Check if all selected
+  * Invert selection
+  * Get selected records from list
+  * ChangeNotifier for reactive updates
+* **NEW BatchAction** - Action definition class
+  * Action ID, label, and icon
+  * Custom colors per action
+  * Confirmation dialog support
+  * Async execution handler
+  * Enable/disable state
+* **NEW BatchActions** - Predefined actions
+  * Delete (with confirmation)
+  * Export
+  * Duplicate
+  * Archive
+  * Move To
+  * Add Tag
+  * Print
+  * Share
+* **NEW executeBatchOperation()** - Progress tracking
+  * Execute operations on multiple records
+  * Progress dialog display
+  * Success/failure tracking
+  * Error message collection
+  * Result summary
+* **NEW showBatchOperationResult()** - Result dialog
+
+#### Batch Action Bar Widgets ⭐
+* **NEW BatchActionBar** - Full-featured action bar
+  * Selection count display with icon
+  * Select all/deselect all button
+  * Custom action buttons
+  * Close button
+  * Confirmation dialogs for destructive actions
+  * Progress indication during execution
+  * Customizable colors and elevation
+  * Auto-hide when no selection
+  * Animated appearance/disappearance
+* **NEW CompactBatchActionBar** - Compact variant
+  * Icon buttons only (no labels)
+  * Minimal space usage
+  * Rounded container design
+* **NEW FloatingBatchActionBar** - Floating variant
+  * Appears at bottom of screen
+  * Material elevation effect
+  * Full width with padding
+* **NEW BatchSelectionCheckbox** - Row selection checkbox
+  * Reactive to manager changes
+  * Auto-updates on selection change
+* **NEW BatchSelectAllCheckbox** - Header checkbox
+  * Tristate support (all/none/some)
+  * Select/deselect all functionality
+
+#### Enhanced FieldTypeBuilder
+* Added support for rich_text field type
+* Added support for color field type
+* Added support for rating field type
+* Helper methods for type conversion:
+  * _getColorPickerType() - Map string to ColorPickerType enum
+  * _getRatingIcon() - Map string to RatingIcon enum
+
+#### New Dependencies
+* `flutter_quill: ^9.3.0` - Rich text editing
+* `flutter_colorpicker: ^1.0.3` - Color picker widgets
+* `flutter_rating_bar: ^4.0.1` - Rating widgets
+
+#### Developer Experience
+* All new widgets and utilities exported
+* Comprehensive documentation
+* Type-safe enums and configurations
+* Reusable components for various use cases
+* Reactive state management with ChangeNotifier
+* Easy integration with existing forms and tables
+
+#### Usage Examples
+
+**Rich Text Field:**
+```dart
+RichTextFieldWidget(
+  label: 'Description',
+  value: existingJsonContent,
+  onChanged: (jsonContent) {
+    // Save JSON content
+  },
+  minHeight: 200,
+  showToolbar: true,
+  toolbarPosition: ToolbarPosition.top,
+)
+```
+
+**Color Picker Field:**
+```dart
+ColorPickerFieldWidget(
+  label: 'Brand Color',
+  value: '#3ECF8E',
+  onChanged: (hexColor) {
+    // Save hex color
+  },
+  pickerType: ColorPickerType.material,
+  showAlpha: false,
+  colorSwatches: ColorSwatches.material,
+)
+```
+
+**Rating Field:**
+```dart
+RatingFieldWidget(
+  label: 'Customer Satisfaction',
+  value: 4.5,
+  onChanged: (rating) {
+    // Save rating
+  },
+  maxRating: 5.0,
+  allowHalfRating: true,
+  icon: RatingIcon.star,
+  ratingLabels: RatingLabels.satisfaction,
+)
+```
+
+**Batch Operations (YAML):**
+```yaml
+table:
+  batch_operations:
+    enabled: true
+    actions:
+      - type: "delete"
+        label: "Delete Selected"
+        icon: "delete"
+        color: "#EF4444"
+        requires_confirmation: true
+      - type: "export"
+        label: "Export Selected"
+        icon: "download"
+```
+
+**Batch Operations (Dart):**
+```dart
+final manager = BatchOperationsManager();
+manager.setAllIds(records.map((r) => r['id'].toString()).toList());
+
+BatchActionBar(
+  manager: manager,
+  actions: [
+    BatchActions.delete(
+      onDelete: (selectedIds) async {
+        for (var id in selectedIds) {
+          await gristService.deleteRecord('MyTable', id);
+        }
+      },
+    ),
+    BatchActions.export(
+      onExport: (selectedIds) async {
+        final selectedRecords = records
+          .where((r) => selectedIds.contains(r['id'].toString()))
+          .toList();
+        await ExportUtils.exportToCSV(records: selectedRecords);
+      },
+    ),
+  ],
+)
+```
+
+#### Breaking Changes
+* None - All changes are additive and backward compatible
+
+#### Bug Fixes
+* Improved color parsing for various hex formats
+* Better null handling in rating widgets
+* Proper disposal of Quill controllers
+
+---
+
 ## 0.8.0
 
 ### Major Feature Release - Data Export & Advanced Table Operations

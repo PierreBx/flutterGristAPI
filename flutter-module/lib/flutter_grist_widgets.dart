@@ -22,9 +22,13 @@ export 'src/widgets/field_widgets/date_field_widget.dart';
 export 'src/widgets/field_widgets/choice_field_widget.dart';
 export 'src/widgets/field_widgets/boolean_field_widget.dart';
 export 'src/widgets/field_widgets/multi_select_field_widget.dart';
+export 'src/widgets/field_widgets/rich_text_field_widget.dart';
+export 'src/widgets/field_widgets/color_picker_field_widget.dart';
+export 'src/widgets/field_widgets/rating_field_widget.dart';
 export 'src/widgets/image_preview_widget.dart';
 export 'src/widgets/column_renderer.dart';
 export 'src/widgets/column_chooser_dialog.dart';
+export 'src/widgets/batch_action_bar.dart';
 
 // Utility exports
 export 'src/utils/field_type_builder.dart';
@@ -34,6 +38,7 @@ export 'src/utils/excel_export_utils.dart';
 export 'src/utils/pdf_export_utils.dart';
 export 'src/utils/responsive_utils.dart';
 export 'src/utils/theme_utils.dart';
+export 'src/utils/batch_operations_utils.dart';
 
 // Theme exports
 export 'src/theme/app_theme.dart';

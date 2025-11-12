@@ -6,6 +6,9 @@ import '../widgets/field_widgets/boolean_field_widget.dart';
 import '../widgets/field_widgets/multi_select_field_widget.dart';
 import '../widgets/field_widgets/reference_field_widget.dart';
 import '../widgets/field_widgets/multi_reference_field_widget.dart';
+import '../widgets/field_widgets/rich_text_field_widget.dart';
+import '../widgets/field_widgets/color_picker_field_widget.dart';
+import '../widgets/field_widgets/rating_field_widget.dart';
 import '../widgets/file_upload_widget.dart';
 
 /// Utility class for building form fields based on field type and configuration.
@@ -318,6 +321,65 @@ class FieldTypeBuilder {
           ),
         );
 
+      case 'rich_text':
+      case 'richtext':
+      case 'html':
+        final minHeight = fieldConfig['min_height'] as double? ?? 200;
+        final maxHeight = fieldConfig['max_height'] as double?;
+        final placeholder = fieldConfig['placeholder'] as String?;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: RichTextFieldWidget(
+            label: label,
+            value: value?.toString(),
+            onChanged: onChanged,
+            readOnly: !enabled,
+            minHeight: minHeight,
+            maxHeight: maxHeight,
+            placeholder: placeholder,
+          ),
+        );
+
+      case 'color':
+      case 'color_picker':
+        final showAlpha = fieldConfig['show_alpha'] as bool? ?? false;
+        final pickerType = _getColorPickerType(fieldConfig['picker_type'] as String?);
+        final colorSwatches = (fieldConfig['color_swatches'] as List<dynamic>?)
+            ?.map((e) => ColorSwatches.material.first)
+            .toList();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: ColorPickerFieldWidget(
+            label: label,
+            value: value,
+            onChanged: onChanged,
+            readOnly: !enabled,
+            showAlpha: showAlpha,
+            pickerType: pickerType,
+            colorSwatches: colorSwatches,
+          ),
+        );
+
+      case 'rating':
+      case 'stars':
+        final maxRating = (fieldConfig['max_rating'] as num?)?.toDouble() ?? 5.0;
+        final allowHalfRating = fieldConfig['allow_half_rating'] as bool? ?? true;
+        final icon = _getRatingIcon(fieldConfig['icon'] as String?);
+        final iconSize = (fieldConfig['icon_size'] as num?)?.toDouble() ?? 40.0;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: RatingFieldWidget(
+            label: label,
+            value: (value as num?)?.toDouble(),
+            onChanged: (rating) => onChanged?.call(rating),
+            readOnly: !enabled,
+            maxRating: maxRating,
+            allowHalfRating: allowHalfRating,
+            icon: icon,
+            iconSize: iconSize,
+          ),
+        );
+
       case 'multiline':
       case 'textarea':
       case 'text':
@@ -414,6 +476,40 @@ class FieldTypeBuilder {
       case 'checkbox':
       default:
         return BooleanFieldStyle.checkbox;
+    }
+  }
+
+  /// Gets the color picker type from string configuration
+  static ColorPickerType _getColorPickerType(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'material':
+        return ColorPickerType.material;
+      case 'block':
+        return ColorPickerType.block;
+      case 'hsv':
+        return ColorPickerType.hsv;
+      case 'rgb':
+        return ColorPickerType.rgb;
+      default:
+        return ColorPickerType.material;
+    }
+  }
+
+  /// Gets the rating icon from string configuration
+  static RatingIcon _getRatingIcon(String? icon) {
+    switch (icon?.toLowerCase()) {
+      case 'star':
+        return RatingIcon.star;
+      case 'heart':
+        return RatingIcon.heart;
+      case 'thumb':
+        return RatingIcon.thumb;
+      case 'circle':
+        return RatingIcon.circle;
+      case 'square':
+        return RatingIcon.square;
+      default:
+        return RatingIcon.star;
     }
   }
 }
