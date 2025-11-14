@@ -113,6 +113,45 @@ This release transforms the admin dashboard into a comprehensive monitoring solu
   * Automatic URL updates on navigation
   * Backward compatible with existing navigation
 
+#### Breadcrumb Navigation ⭐
+* **NEW BreadcrumbWidget** - Show navigation path
+  * Display hierarchical navigation path (Home › Orders › Order #123)
+  * Clickable breadcrumb items for easy navigation
+  * Customizable separator (default: '›')
+  * Optional icons for breadcrumb items
+  * Color customization for links and current page
+  * Overflow handling with ellipsis
+* **NEW CompactBreadcrumbWidget** - Compact breadcrumb variant
+  * Show only last N items (default: 3)
+  * Automatic ellipsis insertion (...) for long paths
+  * Space-efficient for mobile layouts
+* **NEW BreadcrumbBuilder** - Helper class for building breadcrumbs
+  * `fromRoutePath()` - Build from URL route path
+  * `fromPageAndRecord()` - Build from page ID and record ID
+  * Automatic page title lookup from config
+  * Custom navigation callbacks
+* **Integrated in HomePage** - Automatic breadcrumbs
+  * Shows in AppBar below page title
+  * Updates automatically on navigation
+  * Clickable items navigate to parent pages
+  * Hidden when only one level (home)
+
+#### Tab-Based Navigation ⭐
+* **NEW TabbedNavigationWidget** - Group pages into tabs
+  * Display tabs at top or bottom
+  * Multiple tab groups with icons
+  * Show pages grouped under each tab
+  * Role-based visibility per tab
+  * Swipe navigation support
+* **NEW TabGroupConfig** - Tab group configuration
+  * Define tab ID, label, and icon
+  * Specify pages to include in each tab
+  * Parse from YAML configuration
+* **Tab positioning** - Flexible layout
+  * Top tabs (default)
+  * Bottom tabs (mobile-friendly)
+  * Material Design tab styling
+
 #### Developer Experience
 * All new utilities and widgets exported
 * Comprehensive documentation for each component
@@ -225,6 +264,102 @@ final shareableUrl = 'https://your-app.com/page/orders/record/$recordId';
 
 // Send via email, Slack, etc.
 // When user clicks, app opens directly to that record!
+```
+
+**Breadcrumbs - Automatic (in HomePage):**
+```dart
+// Breadcrumbs are automatically shown in HomePage AppBar
+// They update based on current page and record
+
+// Example display:
+// Home › Orders (when viewing Orders page)
+// Home › Orders › Record #12345 (when viewing a specific order)
+```
+
+**Breadcrumbs - Custom Widget:**
+```dart
+import 'package:odalisque/odalisque.dart';
+
+// Create custom breadcrumbs
+BreadcrumbWidget(
+  items: [
+    BreadcrumbItem(
+      label: 'Home',
+      icon: Icons.home,
+      onTap: () => navigateHome(),
+    ),
+    BreadcrumbItem(
+      label: 'Orders',
+      onTap: () => navigateToOrders(),
+    ),
+    BreadcrumbItem(
+      label: 'Order #12345', // Current page (no onTap)
+    ),
+  ],
+  separator: '›',
+  showIcons: true,
+)
+
+// Compact breadcrumbs (for long paths)
+CompactBreadcrumbWidget(
+  items: myLongBreadcrumbList,
+  maxItems: 3, // Show first ... last 2 items
+)
+
+// Build from route path
+final breadcrumbs = BreadcrumbBuilder.fromRoutePath(
+  '/page/orders/record/12345',
+  pageConfigs: config.pages,
+  onNavigate: (pageId, recordId) => navigate(pageId, recordId),
+);
+```
+
+**Tab-Based Navigation - YAML Configuration:**
+```yaml
+navigation:
+  tabs:
+    enabled: true
+    position: "top"  # or "bottom" for mobile
+    groups:
+      - id: "main"
+        label: "Main"
+        icon: "home"
+        pages: ["dashboard", "orders", "customers"]
+      - id: "admin"
+        label: "Admin"
+        icon: "admin"
+        pages: ["admin_dashboard", "users", "settings"]
+      - id: "reports"
+        label: "Reports"
+        icon: "analytics"
+        pages: ["sales_report", "inventory_report"]
+```
+
+**Tab-Based Navigation - Custom Widget:**
+```dart
+import 'package:odalisque/odalisque.dart';
+
+TabbedNavigationWidget(
+  tabGroups: [
+    TabGroupConfig(
+      id: 'main',
+      label: 'Main',
+      icon: Icons.home,
+      pageIds: ['dashboard', 'orders'],
+    ),
+    TabGroupConfig(
+      id: 'admin',
+      label: 'Admin',
+      icon: Icons.admin_panel_settings,
+      pageIds: ['admin_dashboard', 'users'],
+    ),
+  ],
+  position: TabBarPosition.top,
+  onPageSelected: (pageId) {
+    NavigationService.goToPage(context, pageId);
+  },
+  initialPageId: 'dashboard',
+)
 ```
 
 #### Breaking Changes

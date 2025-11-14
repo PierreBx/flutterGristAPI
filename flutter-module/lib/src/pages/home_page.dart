@@ -5,6 +5,7 @@ import '../config/app_config.dart';
 import '../providers/auth_provider.dart';
 import '../utils/theme_utils.dart';
 import '../utils/expression_evaluator.dart';
+import '../widgets/breadcrumb_widget.dart';
 import 'front_page.dart';
 import 'data_master_page.dart';
 import 'data_detail_page.dart';
@@ -111,12 +112,51 @@ class _HomePageState extends State<HomePage> {
     final currentPage = widget.config.pages
         .firstWhere((p) => p.id == _currentPageId);
 
+    // Build breadcrumbs
+    final breadcrumbs = _buildBreadcrumbs();
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(currentPage.title),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(currentPage.title),
+            if (breadcrumbs.length > 1) ...[
+              const SizedBox(height: 4),
+              BreadcrumbWidget(
+                items: breadcrumbs,
+                separator: '›',
+                showIcons: false,
+              ),
+            ],
+          ],
+        ),
       ),
       drawer: _buildDrawer(),
       body: _buildPage(currentPage),
+    );
+  }
+
+  List<BreadcrumbItem> _buildBreadcrumbs() {
+    final currentRecordId = _pageParams['recordId']?.toString();
+
+    return BreadcrumbBuilder.fromPageAndRecord(
+      pageId: _currentPageId ?? '',
+      recordId: currentRecordId,
+      pageConfigs: widget.config.pages
+          .map((p) => {'id': p.id, 'title': p.title})
+          .toList(),
+      onNavigate: (pageId, recordId) {
+        if (pageId.isEmpty) {
+          // Navigate to home (first visible page)
+          final firstPage = _getVisiblePages().first;
+          _navigateToPage(firstPage.id);
+        } else if (recordId != null) {
+          _navigateToPage(pageId, {'recordId': recordId});
+        } else {
+          _navigateToPage(pageId);
+        }
+      },
     );
   }
 
