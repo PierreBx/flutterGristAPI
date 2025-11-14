@@ -1,3 +1,169 @@
+## 0.12.0
+
+### Major Feature Release - Complete Admin Dashboard
+
+#### 🎯 Theme: Real-time monitoring and operational visibility
+
+This release transforms the admin dashboard into a comprehensive monitoring solution with real-time updates, performance metrics, active user tracking, and system health indicators.
+
+#### Real-Time Auto-Refresh ⭐
+* **NEW Auto-refresh functionality** with configurable intervals
+  * Default 30-second refresh interval (YAML-configurable)
+  * Background refresh without blocking UI
+  * Play/pause toggle for auto-refresh
+  * Last refresh timestamp display
+  * Manual refresh button
+* **YAML Configuration:**
+  ```yaml
+  pages:
+    - id: "admin"
+      type: "admin_dashboard"
+      config:
+        auto_refresh:
+          enabled: true
+          interval_seconds: 30
+          show_last_refresh: true
+  ```
+
+#### Performance Metrics ⭐
+* **NEW PerformanceMetrics utility** - API request tracking
+  * Track last 1,000 requests with timing data
+  * Average response time calculation
+  * Error rate percentage (0-100%)
+  * P95 and P99 response times
+  * Requests per endpoint statistics
+  * Slowest requests tracking
+  * Success/failure tracking
+* **NEW PerformanceMetricsWidget** - Visual metrics display
+  * Response time, error rate, total requests cards
+  * Color-coded status indicators (green/orange/red)
+  * Top endpoints with usage percentages
+  * Progress bars for endpoint comparison
+  * Automatic integration with admin dashboard
+
+#### System Health Monitoring ⭐
+* **NEW SystemHealth utility** - Component health tracking
+  * Grist API connectivity checks
+  * Database connection monitoring
+  * Authentication service health
+  * Overall system status (healthy/degraded/down)
+  * Health percentage calculation
+  * Component-level status tracking
+  * Last health check timestamp
+* **NEW SystemHealthWidget** - Visual health display
+  * Large status icon with color coding
+  * Individual component status indicators
+  * Health percentage with progress bar
+  * Last checked timestamp
+  * Error message display
+  * Refresh button for manual checks
+
+#### Active Users Tracking ⭐
+* **NEW ActiveUsersWidget** - User session monitoring
+  * Display currently logged-in users
+  * Last activity timestamps
+  * Session duration tracking
+  * Active/inactive status indicators (< 5 min = active)
+  * Configurable max display count
+  * User role and email display
+  * Real-time session data (mock implementation)
+  * Prepared for future Sessions table integration
+
+#### Enhanced Admin Dashboard
+* **Reorganized layout** with priority widgets
+  * System health at top for immediate visibility
+  * Performance metrics for API monitoring
+  * Active users for user management
+  * System information and database overview below
+* **Header controls**
+  * Auto-refresh toggle (play/pause icon)
+  * Manual refresh button
+  * Last refresh time display
+* **Performance tracking integration**
+  * All API calls logged automatically
+  * Fetch tables and fetch records timing
+  * Error tracking for failed requests
+  * Real-time metrics updates
+
+#### Developer Experience
+* All new utilities and widgets exported
+* Comprehensive documentation for each component
+* Type-safe health status enum
+* Singleton pattern for PerformanceMetrics
+* Clean API for health checks
+* Easy integration with existing pages
+
+#### New Dependencies
+None - All features built with existing dependencies
+
+#### Usage Examples
+
+**Basic Dashboard (auto-configured):**
+```yaml
+pages:
+  - id: "admin"
+    type: "admin_dashboard"
+    title: "Admin Dashboard"
+    # Auto-refresh enabled by default with 30s interval
+```
+
+**Custom Auto-Refresh:**
+```yaml
+pages:
+  - id: "admin"
+    type: "admin_dashboard"
+    config:
+      auto_refresh:
+        enabled: true
+        interval_seconds: 60  # Refresh every minute
+        show_last_refresh: true
+```
+
+**Using Metrics in Custom Code:**
+```dart
+// Performance metrics are tracked automatically
+final metrics = PerformanceMetrics();
+
+// Access metrics
+print('Avg response time: ${metrics.avgResponseTime}ms');
+print('Error rate: ${metrics.errorRate}%');
+print('Total requests: ${metrics.totalRequests}');
+
+// Get endpoint statistics
+final byEndpoint = metrics.getRequestsByEndpoint();
+```
+
+**Using System Health:**
+```dart
+final health = SystemHealth();
+
+// Check health
+health.updateGristApiHealth(true, message: 'API is responsive');
+health.updateDatabaseHealth(true);
+health.markHealthCheckComplete();
+
+// Get status
+print('System status: ${health.statusString}');
+print('Health percentage: ${health.healthPercentage}%');
+```
+
+#### Breaking Changes
+None - All changes are backward compatible
+
+#### Bug Fixes
+* Improved admin dashboard error handling
+* Better loading states for dashboard widgets
+* Fixed null safety issues in health checks
+
+#### Testing
+* **NEW 40+ tests** for performance metrics and system health
+  * PerformanceMetrics unit tests (15+ tests)
+  * SystemHealth unit tests (15+ tests)
+  * Component health tests
+  * Edge case coverage for calculations
+
+---
+
 ## 0.11.0
 
 ### Rebranding Release - OdalIsquE
