@@ -1,21 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../config/app_config.dart';
 import '../providers/auth_provider.dart';
 import '../utils/theme_utils.dart';
 import '../utils/expression_evaluator.dart';
+import '../widgets/breadcrumb_widget.dart';
 import 'front_page.dart';
 import 'data_master_page.dart';
 import 'data_detail_page.dart';
 import 'admin_dashboard_page.dart';
 
-/// Main home page with drawer navigation.
+/// Main home page with drawer navigation and deep linking support.
 class HomePage extends StatefulWidget {
   final AppConfig config;
+  final String? initialPageId;
+  final String? initialRecordId;
 
   const HomePage({
     super.key,
     required this.config,
+    this.initialPageId,
+    this.initialRecordId,
   });
 
   @override
@@ -29,8 +35,13 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    // Set first visible page as default
-    _currentPageId = _getVisiblePages().first.id;
+    // Use initial page ID if provided, otherwise use first visible page
+    _currentPageId = widget.initialPageId ?? _getVisiblePages().first.id;
+
+    // Set initial record ID if provided
+    if (widget.initialRecordId != null) {
+      _pageParams['recordId'] = widget.initialRecordId;
+    }
   }
 
   List<PageConfig> _getVisiblePages() {
@@ -49,13 +60,27 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _navigateToPage(String pageId, [Map<String, dynamic>? params]) {
-    setState(() {
-      _currentPageId = pageId;
-      if (params != null) {
-        _pageParams.addAll(params);
+    // Use go_router for navigation if available
+    try {
+      if (params != null && params.containsKey('recordId')) {
+        context.go('/page/$pageId/record/${params['recordId']}');
+      } else {
+        context.go('/page/$pageId');
       }
-    });
-    Navigator.of(context).pop(); // Close drawer
+    } catch (e) {
+      // Fallback to setState navigation if router not available
+      setState(() {
+        _currentPageId = pageId;
+        if (params != null) {
+          _pageParams.addAll(params);
+        }
+      });
+    }
+
+    // Close drawer if open
+    if (Scaffold.of(context).isDrawerOpen) {
+      Navigator.of(context).pop();
+    }
   }
 
   Widget _buildPage(PageConfig pageConfig) {
@@ -87,12 +112,51 @@ class _HomePageState extends State<HomePage> {
     final currentPage = widget.config.pages
         .firstWhere((p) => p.id == _currentPageId);
 
+    // Build breadcrumbs
+    final breadcrumbs = _buildBreadcrumbs();
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(currentPage.title),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(currentPage.title),
+            if (breadcrumbs.length > 1) ...[
+              const SizedBox(height: 4),
+              BreadcrumbWidget(
+                items: breadcrumbs,
+                separator: '›',
+                showIcons: false,
+              ),
+            ],
+          ],
+        ),
       ),
       drawer: _buildDrawer(),
       body: _buildPage(currentPage),
+    );
+  }
+
+  List<BreadcrumbItem> _buildBreadcrumbs() {
+    final currentRecordId = _pageParams['recordId']?.toString();
+
+    return BreadcrumbBuilder.fromPageAndRecord(
+      pageId: _currentPageId ?? '',
+      recordId: currentRecordId,
+      pageConfigs: widget.config.pages
+          .map((p) => {'id': p.id, 'title': p.title})
+          .toList(),
+      onNavigate: (pageId, recordId) {
+        if (pageId.isEmpty) {
+          // Navigate to home (first visible page)
+          final firstPage = _getVisiblePages().first;
+          _navigateToPage(firstPage.id);
+        } else if (recordId != null) {
+          _navigateToPage(pageId, {'recordId': recordId});
+        } else {
+          _navigateToPage(pageId);
+        }
+      },
     );
   }
 

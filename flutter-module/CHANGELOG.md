@@ -1,3 +1,384 @@
+## 0.12.0
+
+### Major Feature Release - Complete Admin Dashboard & Advanced Navigation
+
+#### 🎯 Theme: Real-time monitoring, operational visibility, and deep linking
+
+This release transforms the admin dashboard into a comprehensive monitoring solution with real-time updates, performance metrics, active user tracking, and system health indicators. It also introduces deep linking support for URL-based navigation, enabling shareable links, bookmarkable pages, and browser back/forward support.
+
+#### Real-Time Auto-Refresh ⭐
+* **NEW Auto-refresh functionality** with configurable intervals
+  * Default 30-second refresh interval (YAML-configurable)
+  * Background refresh without blocking UI
+  * Play/pause toggle for auto-refresh
+  * Last refresh timestamp display
+  * Manual refresh button
+* **YAML Configuration:**
+  ```yaml
+  pages:
+    - id: "admin"
+      type: "admin_dashboard"
+      config:
+        auto_refresh:
+          enabled: true
+          interval_seconds: 30
+          show_last_refresh: true
+  ```
+
+#### Performance Metrics ⭐
+* **NEW PerformanceMetrics utility** - API request tracking
+  * Track last 1,000 requests with timing data
+  * Average response time calculation
+  * Error rate percentage (0-100%)
+  * P95 and P99 response times
+  * Requests per endpoint statistics
+  * Slowest requests tracking
+  * Success/failure tracking
+* **NEW PerformanceMetricsWidget** - Visual metrics display
+  * Response time, error rate, total requests cards
+  * Color-coded status indicators (green/orange/red)
+  * Top endpoints with usage percentages
+  * Progress bars for endpoint comparison
+  * Automatic integration with admin dashboard
+
+#### System Health Monitoring ⭐
+* **NEW SystemHealth utility** - Component health tracking
+  * Grist API connectivity checks
+  * Database connection monitoring
+  * Authentication service health
+  * Overall system status (healthy/degraded/down)
+  * Health percentage calculation
+  * Component-level status tracking
+  * Last health check timestamp
+* **NEW SystemHealthWidget** - Visual health display
+  * Large status icon with color coding
+  * Individual component status indicators
+  * Health percentage with progress bar
+  * Last checked timestamp
+  * Error message display
+  * Refresh button for manual checks
+
+#### Active Users Tracking ⭐
+* **NEW ActiveUsersWidget** - User session monitoring
+  * Display currently logged-in users
+  * Last activity timestamps
+  * Session duration tracking
+  * Active/inactive status indicators (< 5 min = active)
+  * Configurable max display count
+  * User role and email display
+  * Real-time session data (mock implementation)
+  * Prepared for future Sessions table integration
+
+#### Enhanced Admin Dashboard
+* **Reorganized layout** with priority widgets
+  * System health at top for immediate visibility
+  * Performance metrics for API monitoring
+  * Active users for user management
+  * System information and database overview below
+* **Header controls**
+  * Auto-refresh toggle (play/pause icon)
+  * Manual refresh button
+  * Last refresh time display
+* **Performance tracking integration**
+  * All API calls logged automatically
+  * Fetch tables and fetch records timing
+  * Error tracking for failed requests
+  * Real-time metrics updates
+
+#### Deep Linking & URL Navigation ⭐
+* **NEW go_router integration** - URL-based navigation
+  * Shareable URLs for specific pages and records
+  * Browser back/forward button support
+  * Bookmarkable pages
+  * URL structure: `/page/:pageId/record/:recordId`
+* **NEW AppRouter** - Centralized route configuration
+  * Home route (`/`)
+  * Login route (`/login`)
+  * Page by ID (`/page/:pageId`)
+  * Record detail (`/page/:pageId/record/:recordId`)
+  * Admin shortcut (`/admin`)
+  * Authentication-aware redirects
+  * 404 error page with home navigation
+* **NEW NavigationService** - Programmatic navigation helpers
+  * `goHome()` - Navigate to home
+  * `goToPage(pageId)` - Navigate to specific page
+  * `goToRecord(pageId, recordId)` - Navigate to specific record
+  * `goToAdmin()` - Navigate to admin dashboard
+  * `goBack()` - Go back with fallback to home
+  * `getCurrentPath()` - Get current URL path
+  * `isCurrentPath()` - Check if on specific path
+* **Enhanced HomePage** - Deep linking support
+  * `initialPageId` parameter for direct page access
+  * `initialRecordId` parameter for direct record access
+  * Automatic URL updates on navigation
+  * Backward compatible with existing navigation
+
+#### Breadcrumb Navigation ⭐
+* **NEW BreadcrumbWidget** - Show navigation path
+  * Display hierarchical navigation path (Home › Orders › Order #123)
+  * Clickable breadcrumb items for easy navigation
+  * Customizable separator (default: '›')
+  * Optional icons for breadcrumb items
+  * Color customization for links and current page
+  * Overflow handling with ellipsis
+* **NEW CompactBreadcrumbWidget** - Compact breadcrumb variant
+  * Show only last N items (default: 3)
+  * Automatic ellipsis insertion (...) for long paths
+  * Space-efficient for mobile layouts
+* **NEW BreadcrumbBuilder** - Helper class for building breadcrumbs
+  * `fromRoutePath()` - Build from URL route path
+  * `fromPageAndRecord()` - Build from page ID and record ID
+  * Automatic page title lookup from config
+  * Custom navigation callbacks
+* **Integrated in HomePage** - Automatic breadcrumbs
+  * Shows in AppBar below page title
+  * Updates automatically on navigation
+  * Clickable items navigate to parent pages
+  * Hidden when only one level (home)
+
+#### Tab-Based Navigation ⭐
+* **NEW TabbedNavigationWidget** - Group pages into tabs
+  * Display tabs at top or bottom
+  * Multiple tab groups with icons
+  * Show pages grouped under each tab
+  * Role-based visibility per tab
+  * Swipe navigation support
+* **NEW TabGroupConfig** - Tab group configuration
+  * Define tab ID, label, and icon
+  * Specify pages to include in each tab
+  * Parse from YAML configuration
+* **Tab positioning** - Flexible layout
+  * Top tabs (default)
+  * Bottom tabs (mobile-friendly)
+  * Material Design tab styling
+
+#### Developer Experience
+* All new utilities and widgets exported
+* Comprehensive documentation for each component
+* Type-safe health status enum
+* Singleton pattern for PerformanceMetrics
+* Clean API for health checks
+* Easy integration with existing pages
+
+#### New Dependencies
+* `go_router: ^13.0.0` - Declarative routing and deep linking
+
+#### Usage Examples
+
+**Basic Dashboard (auto-configured):**
+```yaml
+pages:
+  - id: "admin"
+    type: "admin_dashboard"
+    title: "Admin Dashboard"
+    # Auto-refresh enabled by default with 30s interval
+```
+
+**Custom Auto-Refresh:**
+```yaml
+pages:
+  - id: "admin"
+    type: "admin_dashboard"
+    config:
+      auto_refresh:
+        enabled: true
+        interval_seconds: 60  # Refresh every minute
+        show_last_refresh: true
+```
+
+**Using Metrics in Custom Code:**
+```dart
+// Performance metrics are tracked automatically
+final metrics = PerformanceMetrics();
+
+// Access metrics
+print('Avg response time: ${metrics.avgResponseTime}ms');
+print('Error rate: ${metrics.errorRate}%');
+print('Total requests: ${metrics.totalRequests}');
+
+// Get endpoint statistics
+final byEndpoint = metrics.getRequestsByEndpoint();
+```
+
+**Using System Health:**
+```dart
+final health = SystemHealth();
+
+// Check health
+health.updateGristApiHealth(true, message: 'API is responsive');
+health.updateDatabaseHealth(true);
+health.markHealthCheckComplete();
+
+// Get status
+print('System status: ${health.statusString}');
+print('Health percentage: ${health.healthPercentage}%');
+```
+
+**Deep Linking - URL Examples:**
+```
+// Home page
+https://your-app.com/
+
+// Login page
+https://your-app.com/login
+
+// Specific page by ID
+https://your-app.com/page/orders
+https://your-app.com/page/customers
+
+// Specific record on a page
+https://your-app.com/page/orders/record/12345
+https://your-app.com/page/customers/record/67890
+
+// Admin dashboard (shortcut)
+https://your-app.com/admin
+```
+
+**Deep Linking - Programmatic Navigation:**
+```dart
+import 'package:odalisque/odalisque.dart';
+
+// Navigate to a specific page
+NavigationService.goToPage(context, 'orders');
+
+// Navigate to a specific record
+NavigationService.goToRecord(context, 'orders', '12345');
+
+// Navigate to admin dashboard
+NavigationService.goToAdmin(context);
+
+// Go back (with fallback to home)
+NavigationService.goBack(context);
+
+// Check current path
+if (NavigationService.isCurrentPath(context, '/admin')) {
+  print('Currently on admin dashboard');
+}
+```
+
+**Deep Linking - Shareable Links:**
+```dart
+// In your app, generate a shareable link
+final recordId = '12345';
+final shareableUrl = 'https://your-app.com/page/orders/record/$recordId';
+
+// Send via email, Slack, etc.
+// When user clicks, app opens directly to that record!
+```
+
+**Breadcrumbs - Automatic (in HomePage):**
+```dart
+// Breadcrumbs are automatically shown in HomePage AppBar
+// They update based on current page and record
+
+// Example display:
+// Home › Orders (when viewing Orders page)
+// Home › Orders › Record #12345 (when viewing a specific order)
+```
+
+**Breadcrumbs - Custom Widget:**
+```dart
+import 'package:odalisque/odalisque.dart';
+
+// Create custom breadcrumbs
+BreadcrumbWidget(
+  items: [
+    BreadcrumbItem(
+      label: 'Home',
+      icon: Icons.home,
+      onTap: () => navigateHome(),
+    ),
+    BreadcrumbItem(
+      label: 'Orders',
+      onTap: () => navigateToOrders(),
+    ),
+    BreadcrumbItem(
+      label: 'Order #12345', // Current page (no onTap)
+    ),
+  ],
+  separator: '›',
+  showIcons: true,
+)
+
+// Compact breadcrumbs (for long paths)
+CompactBreadcrumbWidget(
+  items: myLongBreadcrumbList,
+  maxItems: 3, // Show first ... last 2 items
+)
+
+// Build from route path
+final breadcrumbs = BreadcrumbBuilder.fromRoutePath(
+  '/page/orders/record/12345',
+  pageConfigs: config.pages,
+  onNavigate: (pageId, recordId) => navigate(pageId, recordId),
+);
+```
+
+**Tab-Based Navigation - YAML Configuration:**
+```yaml
+navigation:
+  tabs:
+    enabled: true
+    position: "top"  # or "bottom" for mobile
+    groups:
+      - id: "main"
+        label: "Main"
+        icon: "home"
+        pages: ["dashboard", "orders", "customers"]
+      - id: "admin"
+        label: "Admin"
+        icon: "admin"
+        pages: ["admin_dashboard", "users", "settings"]
+      - id: "reports"
+        label: "Reports"
+        icon: "analytics"
+        pages: ["sales_report", "inventory_report"]
+```
+
+**Tab-Based Navigation - Custom Widget:**
+```dart
+import 'package:odalisque/odalisque.dart';
+
+TabbedNavigationWidget(
+  tabGroups: [
+    TabGroupConfig(
+      id: 'main',
+      label: 'Main',
+      icon: Icons.home,
+      pageIds: ['dashboard', 'orders'],
+    ),
+    TabGroupConfig(
+      id: 'admin',
+      label: 'Admin',
+      icon: Icons.admin_panel_settings,
+      pageIds: ['admin_dashboard', 'users'],
+    ),
+  ],
+  position: TabBarPosition.top,
+  onPageSelected: (pageId) {
+    NavigationService.goToPage(context, pageId);
+  },
+  initialPageId: 'dashboard',
+)
+```
+
+#### Breaking Changes
+None - All changes are backward compatible
+
+#### Bug Fixes
+* Improved admin dashboard error handling
+* Better loading states for dashboard widgets
+* Fixed null safety issues in health checks
+
+#### Testing
+* **NEW 40+ tests** for performance metrics and system health
+  * PerformanceMetrics unit tests (15+ tests)
+  * SystemHealth unit tests (15+ tests)
+  * Component health tests
+  * Edge case coverage for calculations
+
+---
+
 ## 0.11.0
 
 ### Rebranding Release - OdalIsquE

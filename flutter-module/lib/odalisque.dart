@@ -34,6 +34,15 @@ export 'src/widgets/column_renderer.dart';
 export 'src/widgets/column_chooser_dialog.dart';
 export 'src/widgets/batch_action_bar.dart';
 
+// Admin dashboard widgets
+export 'src/widgets/active_users_widget.dart';
+export 'src/widgets/performance_metrics_widget.dart';
+export 'src/widgets/system_health_widget.dart';
+
+// Navigation widgets
+export 'src/widgets/breadcrumb_widget.dart';
+export 'src/widgets/tabbed_navigation_widget.dart';
+
 // Utility exports
 export 'src/utils/field_type_builder.dart';
 export 'src/utils/column_filter_utils.dart';
@@ -44,6 +53,9 @@ export 'src/utils/responsive_utils.dart';
 export 'src/utils/theme_utils.dart';
 export 'src/utils/batch_operations_utils.dart';
 export 'src/utils/security_utils.dart';
+export 'src/utils/performance_metrics.dart';
+export 'src/utils/system_health.dart';
+export 'src/utils/app_router.dart';
 
 // Theme exports
 export 'src/theme/app_theme.dart';
